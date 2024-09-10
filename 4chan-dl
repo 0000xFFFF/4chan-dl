@@ -7,7 +7,6 @@ import argparse
 import re
 import requests
 from bs4 import BeautifulSoup
-from colorama import Fore, Style
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filename')
