@@ -9,9 +9,11 @@ import requests
 from bs4 import BeautifulSoup
 
 # Argument parsing
-parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filename')
+parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames')
 parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
+parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it")
+parser.add_argument('-p', '--postid', action='store_true', help="download file with post's id rather than posted filename")
 args = parser.parse_args()
 
 print(args)
@@ -23,15 +25,33 @@ response = requests.get(args.url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
 file_divs = soup.find_all('div', class_='fileText')
 
-n = len(file_divs)
-for i, file_div in enumerate(file_divs):
-    link = file_div.find('a')
-    file_url = 'https:' + link['href']
-    file_name = link['title'] if link.get('title') else file_url.split('/')[-1]
-    file_path = os.path.join(args.directory, file_name)
-    file_response = requests.get(file_url, headers=headers)
-    with open(file_path, 'wb') as f:
-        f.write(file_response.content)
-    print(f"{i+1}/{n}: {file_url} -> {file_name}")
+try:
+    n = len(file_divs)
+    for i, file_div in enumerate(file_divs):
+        link = file_div.find('a')
+        file_url = 'https:' + link['href']
+        post_id = file_url.split('/')[-1]
+        file_name = link['title'] if link.get('title') else post_id
+        if args.postid: file_name = post_id
 
-print("All files downloaded.")
+        file_path = os.path.join(args.directory, file_name)
+        if not args.overwrite:
+            num = 1
+            original_file_path = file_path
+            while os.path.isfile(file_path):
+                # give new file name
+                num += 1
+                filename, file_extension = os.path.splitext(original_file_path)
+                file_path = f"{filename}_{num}{file_extension}"
+
+        print(f"{i+1}/{n}: {file_url} -> {file_path}")
+        sys.stderr.flush()
+
+        file_response = requests.get(file_url, headers=headers)
+        with open(file_path, 'wb') as f:
+            f.write(file_response.content)
+
+    print("All files downloaded.")
+except KeyboardInterrupt:
+    print("\n\n")
+    pass
