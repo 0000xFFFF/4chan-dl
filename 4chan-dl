@@ -10,55 +10,27 @@ from bs4 import BeautifulSoup
 from colorama import Fore, Style
 
 # Argument parsing
-parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org')
-parser.add_argument('-u', '--url', metavar='url', type=str, help="fetch vendor information for all MACs")
+parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filename')
+parser.add_argument('-u', '--url', metavar='url', required=True, type=str, help="fetch vendor information for all MACs")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
 args = parser.parse_args()
 
-# 4chan URL of the thread you want to scrape
-url = 'https://boards.4chan.org/g/thread/1234567'  # Replace with the actual thread URL
+os.makedirs(args.directory, exist_ok=True)
 
-# Directory to save the files
-download_dir = './downloads'
-
-# Create download directory if it doesn't exist
-os.makedirs(download_dir, exist_ok=True)
-
-# Headers to mimic a real browser visit
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-}
-
-# Download the HTML content of the page
-response = requests.get(url, headers=headers)
+headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
+response = requests.get(args.url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
+file_divs = soup.find_all('div', class_='fileText')
 
-# Find all the image/file links
-file_links = soup.find_all('a', class_='fileThumb')
-
-# Regex pattern to extract the original filename
-filename_pattern = re.compile(r'\((.*?)\)')
-
-# Loop through all found file links
-for link in file_links:
+n = len(file_divs)
+for i, file_div in enumerate(file_divs):
+    link = file_div.find('a')
     file_url = 'https:' + link['href']
-    
-    # Find the filename in the 'title' attribute if available
-    file_name = link['title'] if link.get('title') else None
-    
-    # If no filename in 'title', use ID from URL as a fallback
-    if not file_name:
-        file_name = file_url.split('/')[-1]  # Get the ID-based filename
-    
-    # Full path where the file will be saved
-    file_path = os.path.join(download_dir, file_name)
-    
-    # Download and save the file
+    file_name = link['title'] if link.get('title') else file_url.split('/')[-1]
+    file_path = os.path.join(args.directory, file_name)
     file_response = requests.get(file_url, headers=headers)
     with open(file_path, 'wb') as f:
         f.write(file_response.content)
-    
-    print(f"Downloaded: {file_name}")
+    print(f"{i+1}/{n}: {file_name}")
 
 print("All files downloaded.")
-
