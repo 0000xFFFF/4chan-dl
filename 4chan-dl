@@ -9,12 +9,13 @@ import requests
 from bs4 import BeautifulSoup
 
 # Argument parsing
-parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames')
+parser = argparse.ArgumentParser(description='Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames')
 parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
-parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it")
-parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it")
+parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it (warning: will overwrite first file with that name)")
+parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it (warning: if multiple files have the same posted name in thread it will skip them)")
 parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
+parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download if you use the -s flag)")
 args = parser.parse_args()
 
 print(args)
@@ -27,6 +28,16 @@ soup = BeautifulSoup(response.content, 'html.parser')
 file_divs = soup.find_all('div', class_='fileText')
 n = len(file_divs)
 
+def get_new_name(file_path):
+    num = 1
+    original_file_path = file_path
+    while os.path.isfile(file_path):
+        # give new file name
+        num += 1
+        filename, file_extension = os.path.splitext(original_file_path)
+        file_path = f"{filename}_{num}{file_extension}"
+    return file_path
+
 try:
     for i, file_div in enumerate(file_divs):
         link = file_div.find('a')
@@ -36,38 +47,34 @@ try:
         sys.stdout.flush()
 
         # choose file name
-        post_id = file_url.split('/')[-1]
-        file_name = post_id
-        innerHTML = link.text.strip()
-        if innerHTML != post_id:
-            file_name = innerHTML
+        post_id_with_ext = file_url.split('/')[-1]
+        file_name_with_ext = post_id_with_ext
+        post_name_with_ext = link.text.strip()
+        if post_name_with_ext != post_id_with_ext:
+            file_name_with_ext = post_name_with_ext
         if link.get('title'):
-            file_name = link['title']
-        if args.postid: file_name = post_id
+            title = link['title']
+            post_name_with_ext = title
+            file_name_with_ext = title
+        if args.postid: file_name_with_ext = post_id_with_ext
 
-        file_path = os.path.join(args.directory, file_name)
+        if args.combine:
+            file_name_with_ext = os.path.splitext(post_id_with_ext)[0] + "_" + post_name_with_ext
+
+        file_path = os.path.join(args.directory, file_name_with_ext)
 
         if os.path.isfile(file_path):
             if args.skip:
                 sys.stdout.write(f"skip: {file_path}\n")
                 sys.stdout.flush()
                 continue
-
-            if args.overwrite:
+            elif args.overwrite:
                 sys.stdout.write(f"overwrite: ")
                 sys.stdout.flush()
             else:
-                num = 1
-                original_file_path = file_path
-                while os.path.isfile(file_path):
-                    # give new file name
-                    num += 1
-                    filename, file_extension = os.path.splitext(original_file_path)
-                    file_path = f"{filename}_{num}{file_extension}"
-
+                file_path = get_new_name(file_path)
                 sys.stdout.write(f"new_name: ")
                 sys.stdout.flush()
-
 
         sys.stdout.write(f"download: {file_path}")
         sys.stdout.flush()
