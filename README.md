@@ -9,5 +9,5 @@ Download files/media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 
 ## Running
 ```
-./4chan-dl -u "https://boards.4chan.org/XX/thread/XXXXXXX" -d "download_dir"
+./4chan-dl -u "https://boards.4chan.org/XX/thread/XXXXXXX" -d "downloads"
 ```
