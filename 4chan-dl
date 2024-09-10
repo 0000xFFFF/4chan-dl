@@ -37,13 +37,18 @@ try:
 
         post_id = file_url.split('/')[-1]
         file_name = link['title'] if link.get('title') else post_id
+
+        innerHTML = link.text.strip()
+        if innerHTML != post_id:
+            file_name = innerHTML
+
         if args.postid: file_name = post_id
 
         file_path = os.path.join(args.directory, file_name)
 
         if os.path.isfile(file_path):
             if args.skip:
-                sys.stdout.write(f"skip\n")
+                sys.stdout.write(f"skip: {file_path}\n")
                 sys.stdout.flush()
                 continue
 
