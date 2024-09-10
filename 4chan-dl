@@ -14,7 +14,7 @@ parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
 parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it")
 parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it")
-parser.add_argument('-p', '--postid', action='store_true', help="download file with post's id rather than posted filename")
+parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
 args = parser.parse_args()
 
 print(args)
@@ -35,13 +35,14 @@ try:
         sys.stdout.write(f"{i+1}/{n}: {file_url} -> ")
         sys.stdout.flush()
 
+        # choose file name
         post_id = file_url.split('/')[-1]
-        file_name = link['title'] if link.get('title') else post_id
-
+        file_name = post_id
         innerHTML = link.text.strip()
         if innerHTML != post_id:
             file_name = innerHTML
-
+        if link.get('title'):
+            file_name = link['title']
         if args.postid: file_name = post_id
 
         file_path = os.path.join(args.directory, file_name)
