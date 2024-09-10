@@ -23,7 +23,7 @@ Just downloads new files in thread.
 ## Usage
 ###### ./4chan-dl -h
 ```
-usage: 4chan-dl [-h] [-d directory] [-o] [-s] [-p] [-c] url
+usage: 4chan-dl [-h] [-d directory] [-o] [-s] [-p] [-c] [-f file.txt] url
 
 Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames
 
@@ -38,4 +38,6 @@ options:
   -s, --skip            if file exists with the same filename skip it (warning: if multiple files have the same posted name in thread it will skip them)
   -p, --postid          download files with post's id rather than posted filename
   -c, --combine         download files with post's id + posted name (postid_postname.ext) (recommended way to download if you use the -s flag)
+  -f file.txt, --filter file.txt
+                        urls to ignore stored in file
 ```

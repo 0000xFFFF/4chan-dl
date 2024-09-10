@@ -16,6 +16,7 @@ parser.add_argument('-o', '--overwrite', action='store_true', help="if file exis
 parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it (warning: if multiple files have the same posted name in thread it will skip them)")
 parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
 parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download if you use the -s flag)")
+parser.add_argument('-f', '--filter', metavar='file.txt', type=str, help="urls to ignore stored in file")
 args = parser.parse_args()
 
 print(args)
@@ -27,6 +28,10 @@ response = requests.get(args.url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
 file_divs = soup.find_all('div', class_='fileText')
 n = len(file_divs)
+
+if args.filter is not None:
+    with open(args.filter, 'r') as file1:
+        url_filter = {line.strip() for line in file1.readlines()}
 
 def get_new_name(file_path):
     num = 1
@@ -43,7 +48,15 @@ try:
         link = file_div.find('a')
         file_url = 'https:' + link['href']
 
-        sys.stdout.write(f"{i+1}/{n}: {file_url} -> ")
+        sys.stdout.write(f"{i+1}/{n}: ")
+        sys.stdout.flush()
+
+        if args.filter and file_url in url_filter:
+            sys.stdout.write(f"filtered: {file_url}\n")
+            sys.stdout.flush()
+            continue
+
+        sys.stdout.write(f"{file_url} -> ")
         sys.stdout.flush()
 
         # choose file name
