@@ -72,7 +72,7 @@ try:
 
         sys.stdout.write(" -> downloaded\n")
 
-    print("All files downloaded.")
+    print("done.")
 except KeyboardInterrupt:
     print("\n\n")
     pass
