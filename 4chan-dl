@@ -10,9 +10,11 @@ from bs4 import BeautifulSoup
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filename')
-parser.add_argument('url', required=True, type=str, help="4chan thread url")
+parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
 args = parser.parse_args()
+
+print(args)
 
 os.makedirs(args.directory, exist_ok=True)
 
@@ -30,6 +32,6 @@ for i, file_div in enumerate(file_divs):
     file_response = requests.get(file_url, headers=headers)
     with open(file_path, 'wb') as f:
         f.write(file_response.content)
-    print(f"{i+1}/{n}: {file_name}")
+    print(f"{i+1}/{n}: {file_url} -> {file_name}")
 
 print("All files downloaded.")
