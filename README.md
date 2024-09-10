@@ -15,7 +15,7 @@ Download files/media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 ## Usage
 ###### ./4chan-dl -h
 ```
-usage: 4chan-dl [-h] [-d directory] [-o] [-p] url
+usage: 4chan-dl [-h] [-d directory] [-o] [-s] [-p] url
 
 Download media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames
 
@@ -27,5 +27,6 @@ options:
   -d directory, --directory directory
                         directory to save files to
   -o, --overwrite       if file exists with the same filename overwrite it
+  -s, --skip            if file exists with the same filename skip it
   -p, --postid          download file with post's id rather than posted filename
 ```

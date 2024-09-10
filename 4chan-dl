@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(description='Download media (.jpg, .jpeg, .webm
 parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
 parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it")
+parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it")
 parser.add_argument('-p', '--postid', action='store_true', help="download file with post's id rather than posted filename")
 args = parser.parse_args()
 
@@ -24,32 +25,52 @@ headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit
 response = requests.get(args.url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
 file_divs = soup.find_all('div', class_='fileText')
+n = len(file_divs)
 
 try:
-    n = len(file_divs)
     for i, file_div in enumerate(file_divs):
         link = file_div.find('a')
         file_url = 'https:' + link['href']
+
+        sys.stdout.write(f"{i+1}/{n}: {file_url} -> ")
+        sys.stdout.flush()
+
         post_id = file_url.split('/')[-1]
         file_name = link['title'] if link.get('title') else post_id
         if args.postid: file_name = post_id
 
         file_path = os.path.join(args.directory, file_name)
-        if not args.overwrite:
-            num = 1
-            original_file_path = file_path
-            while os.path.isfile(file_path):
-                # give new file name
-                num += 1
-                filename, file_extension = os.path.splitext(original_file_path)
-                file_path = f"{filename}_{num}{file_extension}"
 
-        print(f"{i+1}/{n}: {file_url} -> {file_path}")
-        sys.stderr.flush()
+        if os.path.isfile(file_path):
+            if args.skip:
+                sys.stdout.write(f"skip\n")
+                sys.stdout.flush()
+                continue
+
+            if args.overwrite:
+                sys.stdout.write(f"overwrite: ")
+                sys.stdout.flush()
+            else:
+                num = 1
+                original_file_path = file_path
+                while os.path.isfile(file_path):
+                    # give new file name
+                    num += 1
+                    filename, file_extension = os.path.splitext(original_file_path)
+                    file_path = f"{filename}_{num}{file_extension}"
+
+                sys.stdout.write(f"new_name: ")
+                sys.stdout.flush()
+
+
+        sys.stdout.write(f"download: {file_path}")
+        sys.stdout.flush()
 
         file_response = requests.get(file_url, headers=headers)
         with open(file_path, 'wb') as f:
             f.write(file_response.content)
+
+        sys.stdout.write(" -> downloaded\n")
 
     print("All files downloaded.")
 except KeyboardInterrupt:
