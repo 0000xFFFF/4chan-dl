@@ -17,13 +17,13 @@ If the thread has multiple files with the same posted filename the files will be
 ## Recommend way to run
 Just downloads new files in thread.
 ```
-./4chan-dl "https://boards.4chan.org/XX/thread/XXXXXXX" -d "downloads" -c -s
+./4chan-dl "https://boards.4chan.org/XX/thread/XXXXXXX" -d "downloads" -c -s -t 3
 ```
 
 ## Usage
 ###### ./4chan-dl -h
 ```
-usage: 4chan-dl [-h] [-d directory] [-o] [-s] [-p] [-c] [-f file.txt] url
+usage: 4chan-dl [-h] [-d directory] [-o] [-s] [-p] [-c] [-f file.txt] [-t num_threads] url
 
 Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames
 
@@ -34,10 +34,12 @@ options:
   -h, --help            show this help message and exit
   -d directory, --directory directory
                         directory to save files to
-  -o, --overwrite       if file exists with the same filename overwrite it (warning: will overwrite first file with that name)
-  -s, --skip            if file exists with the same filename skip it (warning: if multiple files have the same posted name in thread it will skip them)
+  -o, --overwrite       if file exists with the same filename overwrite it
+  -s, --skip            if file exists with the same filename skip it
   -p, --postid          download files with post's id rather than posted filename
-  -c, --combine         download files with post's id + posted name (postid_postname.ext) (recommended way to download if you use the -s flag)
+  -c, --combine         download files with post's id + posted name (postid_postname.ext) (recommended way to download)
   -f file.txt, --filter file.txt
                         urls to ignore stored in file
+  -t num_threads, --threads num_threads
+                        number of download threads (default: 1)
 ```

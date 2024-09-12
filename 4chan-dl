@@ -2,103 +2,148 @@
 
 import sys
 import os
-import subprocess
 import argparse
 import re
 import requests
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames')
 parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
-parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it (warning: will overwrite first file with that name)")
-parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it (warning: if multiple files have the same posted name in thread it will skip them)")
+parser.add_argument('-o', '--overwrite', action='store_true', help="if file exists with the same filename overwrite it")
+parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it")
 parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
-parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download if you use the -s flag)")
+parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download)")
 parser.add_argument('-f', '--filter', metavar='file.txt', type=str, help="urls to ignore stored in file")
+parser.add_argument('-t', '--threads', metavar='num_threads', type=int, default=1, help="number of download threads (default: 1)")
 args = parser.parse_args()
 
 print(args)
 
 os.makedirs(args.directory, exist_ok=True)
 
+sys.stdout.write(f"# Downloading page...\n")
+sys.stdout.flush()
+
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
 response = requests.get(args.url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
 file_divs = soup.find_all('div', class_='fileText')
 n = len(file_divs)
+n_str_len = len(str(n))
+
+# (file_url, file_path)
+download_list = []
+existing_paths = set()
+mutex_lock = threading.Lock()
 
 if args.filter is not None:
     with open(args.filter, 'r') as file1:
         url_filter = {line.strip() for line in file1.readlines()}
 
-def get_new_name(file_path):
+def get_new_name(file_path, existing_paths):
     num = 1
     original_file_path = file_path
-    while os.path.isfile(file_path):
-        # give new file name
+    while file_path in existing_paths:
         num += 1
-        filename, file_extension = os.path.splitext(original_file_path)
-        file_path = f"{filename}_{num}{file_extension}"
+        file_name, file_extension = os.path.splitext(original_file_path)
+        file_path = f"{file_name}_{num}{file_extension}"
     return file_path
 
-try:
-    for i, file_div in enumerate(file_divs):
-        link = file_div.find('a')
-        file_url = 'https:' + link['href']
 
-        sys.stdout.write(f"{i+1}/{n}: ")
+sys.stdout.write(f"# Processing page...\n")
+sys.stdout.flush()
+
+for i, file_div in enumerate(file_divs):
+    link = file_div.find('a')
+    file_url = 'https:' + link['href']
+
+    x = (f"{(i+1)}").rjust(n_str_len)
+    sys.stdout.write(f"{x}/{n} | ")
+    sys.stdout.flush()
+
+    if args.filter and file_url in url_filter:
+        sys.stdout.write(f"filtered: {file_url}\n")
+        sys.stdout.flush()
+        continue
+
+    sys.stdout.write(f"{file_url} | ")
+    sys.stdout.flush()
+
+    # choose file name
+    post_id_with_ext = file_url.split('/')[-1]
+    file_name_with_ext = post_id_with_ext
+    post_name_with_ext = link.text.strip()
+    if post_name_with_ext != post_id_with_ext:
+        file_name_with_ext = post_name_with_ext
+    if link.get('title'):
+        title = link['title']
+        post_name_with_ext = title
+        file_name_with_ext = title
+    if args.postid: file_name_with_ext = post_id_with_ext
+
+    if args.combine:
+        file_name_with_ext = os.path.splitext(post_id_with_ext)[0] + "_" + post_name_with_ext
+
+    file_path = os.path.join(args.directory, file_name_with_ext)
+
+    if any(existing_file_path == file_path for _, existing_file_path in download_list):
+        file_path = get_new_name(file_path, existing_paths)
+        sys.stdout.write(f"renamed  | ")
+        sys.stdout.flush()
+    else:
+        sys.stdout.write(f"original | ")
         sys.stdout.flush()
 
-        if args.filter and file_url in url_filter:
-            sys.stdout.write(f"filtered: {file_url}\n")
-            sys.stdout.flush()
-            continue
+    sys.stdout.write(f"{file_path}\n")
+    sys.stdout.flush()
 
-        sys.stdout.write(f"{file_url} -> ")
+    existing_paths.add(file_path)
+    download_list.append([file_url, file_path])
+
+
+sys.stdout.write(f"# Downloading files...\n")
+sys.stdout.flush()
+
+def download_file(i, file_url, file_path):
+
+    with mutex_lock:
+        x = (f"{(i+1)}").rjust(n_str_len)
+        sys.stdout.write(f"> {x}/{n}: downloading: {file_url} -> ")
         sys.stdout.flush()
-
-        # choose file name
-        post_id_with_ext = file_url.split('/')[-1]
-        file_name_with_ext = post_id_with_ext
-        post_name_with_ext = link.text.strip()
-        if post_name_with_ext != post_id_with_ext:
-            file_name_with_ext = post_name_with_ext
-        if link.get('title'):
-            title = link['title']
-            post_name_with_ext = title
-            file_name_with_ext = title
-        if args.postid: file_name_with_ext = post_id_with_ext
-
-        if args.combine:
-            file_name_with_ext = os.path.splitext(post_id_with_ext)[0] + "_" + post_name_with_ext
-
-        file_path = os.path.join(args.directory, file_name_with_ext)
 
         if os.path.isfile(file_path):
             if args.skip:
                 sys.stdout.write(f"skip: {file_path}\n")
                 sys.stdout.flush()
-                continue
+                return
             elif args.overwrite:
                 sys.stdout.write(f"overwrite: ")
                 sys.stdout.flush()
-            else:
-                file_path = get_new_name(file_path)
-                sys.stdout.write(f"new_name: ")
-                sys.stdout.flush()
 
-        sys.stdout.write(f"download: {file_path}")
+
+        sys.stdout.write(f"{file_path}\n")
         sys.stdout.flush()
 
-        file_response = requests.get(file_url, headers=headers)
-        with open(file_path, 'wb') as f:
-            f.write(file_response.content)
+    file_response = requests.get(file_url, headers=headers)
+    with open(file_path, 'wb') as f:
+        f.write(file_response.content)
 
-        sys.stdout.write(" -> downloaded\n")
+try:
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        futures = [executor.submit(download_file, i, file_url, file_path) for i, (file_url, file_path) in enumerate(download_list)]
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as exc:
+                sys.stdout.write(f"Exception occurred: {exc}\n")
+                sys.stdout.flush()
 
     print("done.")
 except KeyboardInterrupt:
     print("\n\n")
     pass
+
