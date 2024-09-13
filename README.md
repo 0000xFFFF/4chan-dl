@@ -7,7 +7,8 @@ Download files/media (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 If the thread has multiple files with the same posted filename the files will be downloaded with different names.
 
 ## Requirements
-* BeautifulSoup
+* beautifulsoup4
+* colorama
 
 ## Running
 ```

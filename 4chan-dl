@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+from colorama import Fore, Style
 
 # Argument parsing
 parser = argparse.ArgumentParser(description='Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames')
@@ -21,14 +22,20 @@ parser.add_argument('-t', '--threads', metavar='num_threads', type=int, default=
 parser.add_argument('-v', '--verbose', action='store_true', help="be more verbose")
 args = parser.parse_args()
 
-if args.verbose:
-    sys.stdout.write(f"{args}\n")
+def log(text, color=""):
+    if args.verbose:
+        sys.stdout.write(f"{Style.NORMAL}{color}{text}{Style.RESET_ALL}")
+        sys.stdout.flush()
+
+def log2(text, color=""):
+    sys.stdout.write(f"{Style.NORMAL}{color}{text}{Style.RESET_ALL}")
     sys.stdout.flush()
+
+log(f"{args}\n")
 
 os.makedirs(args.directory, exist_ok=True)
 
-sys.stdout.write(f"# Downloading page...\n")
-sys.stdout.flush()
+log(f"Downloading page...\n")
 
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
 response = requests.get(args.url, headers=headers)
@@ -42,12 +49,18 @@ download_list = []
 existing_paths = set()
 mutex_lock = threading.Lock()
 
-countNames_original = 0
-countNames_renamed = 0
+count_renamed   = 0
+count_original  = 0
+count_filtered  = 0
+count_skip      = 0
+count_overwrite = 0
+count_download  = 0
 
+url_filter_n = 0
 if args.filter is not None:
     with open(args.filter, 'r') as file1:
         url_filter = {line.strip() for line in file1.readlines()}
+        url_filter_n = len(url_filter)
 
 def get_new_name(file_path, existing_paths):
     num = 1
@@ -58,27 +71,19 @@ def get_new_name(file_path, existing_paths):
         file_path = f"{file_name}_{num}{file_extension}"
     return file_path
 
-sys.stdout.write(f"# Processing page...\n")
-sys.stdout.flush()
+log(f"+==[ Processing page...\n")
+
 
 for i, file_div in enumerate(file_divs):
     link = file_div.find('a')
     file_url = 'https:' + link['href']
 
-    if args.verbose:
-        x = (f"{(i+1)}").rjust(n_str_len)
-        sys.stdout.write(f"{x}/{n} | ")
-        sys.stdout.flush()
-
-    if args.filter and file_url in url_filter:
-        if args.verbose:
-            sys.stdout.write(f"filtered: {file_url}\n")
-            sys.stdout.flush()
-        continue
-
-    if args.verbose:
-        sys.stdout.write(f"{file_url} | ")
-        sys.stdout.flush()
+    x = (f"{(i+1)}").rjust(n_str_len)
+    log(f"|-> ")
+    log(f"{x}/{n}", f"{Fore.YELLOW}")
+    log(" | ")
+    log(f"{file_url}", f"{Fore.GREEN}")
+    log(" | ")
 
     # choose file name
     post_id_with_ext = file_url.split('/')[-1]
@@ -97,56 +102,78 @@ for i, file_div in enumerate(file_divs):
 
     file_path = os.path.join(args.directory, file_name_with_ext)
 
-    if any(existing_file_path == file_path for _, existing_file_path in download_list):
-        file_path = get_new_name(file_path, existing_paths)
-        countNames_renamed += 1
-        if args.verbose:
-            sys.stdout.write(f"renamed  | ")
-            sys.stdout.flush()
-    else:
-        countNames_original += 1
-        if args.verbose:
-            sys.stdout.write(f"original | ")
-            sys.stdout.flush()
+    filtered = False
+    if args.filter and file_url in url_filter:
+        filtered = True
+        count_filtered += 1
+        log(f"filtered", f"{Fore.LIGHTYELLOW_EX}")
+        log(" | ")
 
-    if args.verbose:
-        sys.stdout.write(f"{file_path}\n")
-        sys.stdout.flush()
+    elif any(existing_file_path == file_path for _, existing_file_path in download_list):
+        file_path = get_new_name(file_path, existing_paths)
+        count_renamed += 1
+        log(f"renamed", f"{Fore.LIGHTYELLOW_EX}")
+        log("  | ")
+    else:
+        count_original += 1
+        log(f"original", f"{Fore.BLUE}")
+        log(" | ")
+
+
+    log(f"{file_path}", f"{Fore.MAGENTA}")
+    log("\n")
+
+    if filtered: continue
 
     existing_paths.add(file_path)
     download_list.append([file_url, file_path])
 
+download_list_n = len(download_list)
 
-sys.stdout.write(f"# total files........: {n}\n")
-sys.stdout.write(f"# original post names: {countNames_original}\n")
-sys.stdout.write(f"# renamed post names.: {countNames_renamed}\n")
-sys.stdout.flush()
+log("|\n")
+log(f"|-> total files........: {n}\n")
+log(f"|-> filtered urls......: {count_filtered}/{url_filter_n}\n")
+log(f"|-> original post names: {count_original}\n")
+log(f"|-> renamed post names.: {count_renamed}\n")
+log(f"|-> files to download..: {download_list_n}\n")
+log("\n")
 
-sys.stdout.write(f"# Downloading files...\n")
-sys.stdout.flush()
+log2(f"+==[ Downloading files...\n")
 
 def download_file(i, file_url, file_path):
+    global count_skip
+    global count_overwrite
+    global count_download
 
     with mutex_lock:
         x = (f"{(i+1)}").rjust(n_str_len)
-        sys.stdout.write(f"> {x}/{n}: {file_url} -> ")
-        sys.stdout.flush()
+        log2("|-> ")
+        log2(f"{x}/{download_list_n}", f"{Fore.YELLOW}")
+        log2(": ")
+        log2(f"{file_url}", f"{Fore.GREEN}")
+        log2(" -> ")
 
+        skip = False
         if os.path.isfile(file_path):
             if args.skip:
-                sys.stdout.write(f"skip: {file_path}\n")
-                sys.stdout.flush()
-                return
+                count_skip += 1
+                log2("skip:", f"{Fore.LIGHTYELLOW_EX}")
+                log2(" ")
+                skip = True
             else:
-                sys.stdout.write(f"overwrite: ")
-                sys.stdout.flush()
+                count_overwrite += 1
+                log2("overwrite:", f"{Fore.LIGHTRED_EX}")
+                log2(" ")
 
-        sys.stdout.write(f"{file_path}\n")
-        sys.stdout.flush()
+        log2(f"{file_path}\n", f"{Fore.MAGENTA}")
+        if skip: return
 
     file_response = requests.get(file_url, headers=headers)
     with open(file_path, 'wb') as f:
         f.write(file_response.content)
+
+    with mutex_lock:
+        count_download += 1
 
 try:
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
@@ -155,11 +182,28 @@ try:
             try:
                 future.result()
             except Exception as exc:
-                sys.stdout.write(f"Exception occurred: {exc}\n")
-                sys.stdout.flush()
+                log(f"Exception occurred: {exc}\n", "{Fore.RED}")
 
-    print("done.")
 except KeyboardInterrupt:
     print("\n\n")
     pass
 
+log("|\n")
+log(f"|-> downloaded files...: {count_download}\n")
+log(f"|-> skipped files......: {count_skip}\n")
+log(f"|-> overwritten files..: {count_overwrite}\n")
+log("\n")
+
+log(f"+==[ INFO\n")
+log(f"|+==[ Processing page \n")
+log(f"||-> total files........: {n}\n")
+log(f"||-> filtered urls......: {count_filtered}/{url_filter_n}\n")
+log(f"||-> original post names: {count_original}\n")
+log(f"||-> renamed post names.: {count_renamed}\n")
+log(f"||-> files to download..: {len(download_list)}\n")
+log(f"|+==[ Downloading files\n")
+log(f"||-> downloaded files...: {count_download}\n")
+log(f"||-> skipped files......: {count_skip}\n")
+log(f"||-> overwritten files..: {count_overwrite}\n")
+log("\n")
+log("done.\n\n")
