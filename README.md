@@ -6,7 +6,8 @@ Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 <br>
 If the thread has multiple files with the same posted filename the files will be renamed (downloaded with a different name).
 
-## Requirements
+## Requirements - pip
+* requests
 * beautifulsoup4
 * colorama
 
