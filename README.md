@@ -13,13 +13,13 @@ If the thread has multiple files with the same posted filename the files will be
 
 ## Running
 ```
-./4chan-dl "https://boards.4chan.org/XX/thread/XXXXXXX" -d "downloads"
+./4chan-dl -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
 ## Recommend way to run
 Just downloads new files in thread.
 ```
-./4chan-dl "https://boards.4chan.org/XX/thread/XXXXXXX" -d "downloads" -c -s -t 3
+./4chan-dl -cst 3 -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
 ## Usage
