@@ -14,12 +14,20 @@ parser = argparse.ArgumentParser(description='Download media files from 4chan.or
 parser.add_argument('url', type=str, help="4chan thread url")
 parser.add_argument('-d', '--directory', metavar='directory', default='.', type=str, help="directory to save files to")
 parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it (default: overwrite)")
+parser.add_argument('-r', '--recursive_skip', action='store_true', help="recursively search for filenames to skip")
 parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
 parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download)")
 parser.add_argument('-f', '--filter', metavar='file.txt', type=str, help="urls to ignore stored in file")
 parser.add_argument('-t', '--threads', metavar='num_threads', type=int, default=1, help="number of download worker threads (default: 1)")
 parser.add_argument('-v', '--verbose', action='store_true', help="be more verbose")
+parser.add_argument('-g', '--goodargs', action='store_true', help="-crvt 5")
 args = parser.parse_args()
+
+if args.goodargs:
+    args.combine = True
+    args.recursive_skip = True
+    args.verbose = True
+    args.threads = 5
 
 
 def log(text, color=""):
@@ -147,6 +155,14 @@ log("\n")
 log2("+==[ Downloading files...\n")
 
 
+def recursive_search(file_name):
+    for root, dirs, files in os.walk(args.directory):
+        for file in files:
+            if file == file_name:
+                return True
+    return False
+
+
 def download_file(i, file_url, file_path):
     global count_skip
     global count_overwrite
@@ -160,21 +176,27 @@ def download_file(i, file_url, file_path):
         log2(f"{file_url}", f"{Fore.GREEN}")
         log2(" -> ")
 
-        skip = False
+        if args.recursive_skip and recursive_search(os.path.basename(file_path)):
+            log2("rskip:", f"{Fore.LIGHTYELLOW_EX}")
+            log2(" ")
+            log2(f"{file_path}\n", f"{Fore.MAGENTA}")
+            return
+
         if os.path.isfile(file_path):
             if args.skip:
                 count_skip += 1
                 log2("skip:", f"{Fore.LIGHTYELLOW_EX}")
                 log2(" ")
-                skip = True
+                log2(f"{file_path}\n", f"{Fore.MAGENTA}")
+                return
             else:
                 count_overwrite += 1
                 log2("overwrite:", f"{Fore.LIGHTRED_EX}")
                 log2(" ")
+                log2(f"{file_path}\n", f"{Fore.MAGENTA}")
 
-        log2(f"{file_path}\n", f"{Fore.MAGENTA}")
-        if skip:
-            return
+        else:
+            log2(f"{file_path}\n", f"{Fore.MAGENTA}")
 
     file_response = requests.get(file_url, headers=headers)
     with open(file_path, 'wb') as f:
