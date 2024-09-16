@@ -39,7 +39,7 @@ options:
   -s, --skip            if file exists with the same filename skip it (default: overwrite)
   -r, --recursive_skip  recursively search for filenames to skip
   -p, --postid          download files with post's id rather than posted filename
-  -c, --combine         download files with post's id + posted name (postid_postname.ext) (recommended way to download)
+  -c, --combine         download files with post's id + posted name (<postid>_<postname>.<ext>)
   -f file.txt, --filter file.txt
                         urls to ignore stored in file
   -t num_threads, --threads num_threads

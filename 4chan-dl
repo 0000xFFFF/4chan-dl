@@ -16,7 +16,7 @@ parser.add_argument('-d', '--directory', metavar='directory', default='.', type=
 parser.add_argument('-s', '--skip', action='store_true', help="if file exists with the same filename skip it (default: overwrite)")
 parser.add_argument('-r', '--recursive_skip', action='store_true', help="recursively search for filenames to skip")
 parser.add_argument('-p', '--postid', action='store_true', help="download files with post's id rather than posted filename")
-parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (postid_postname.ext) (recommended way to download)")
+parser.add_argument('-c', '--combine', action='store_true', help="download files with post's id + posted name (<postid>_<postname>.<ext>)")
 parser.add_argument('-f', '--filter', metavar='file.txt', type=str, help="urls to ignore stored in file")
 parser.add_argument('-t', '--threads', metavar='num_threads', type=int, default=1, help="number of download worker threads (default: 1)")
 parser.add_argument('-v', '--verbose', action='store_true', help="be more verbose")
