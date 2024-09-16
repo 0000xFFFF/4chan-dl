@@ -19,7 +19,7 @@ If the thread has multiple files with the same posted filename the files will be
 ## Recommend way to run
 Just downloads new files in thread.
 ```
-./4chan-dl -cst 3 -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
+./4chan-dl -csvt 3 -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
 ## Usage
