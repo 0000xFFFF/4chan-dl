@@ -159,8 +159,8 @@ def recursive_search(file_name):
     for root, dirs, files in os.walk(args.directory):
         for file in files:
             if file == file_name:
-                return True
-    return False
+                return os.path.join(root, file_name)
+    return ""
 
 
 def download_file(i, file_url, file_path):
@@ -176,11 +176,14 @@ def download_file(i, file_url, file_path):
         log2(f"{file_url}", f"{Fore.GREEN}")
         log2(" -> ")
 
-        if args.recursive_skip and recursive_search(os.path.basename(file_path)):
-            log2("rskip:", f"{Fore.LIGHTYELLOW_EX}")
-            log2(" ")
-            log2(f"{file_path}\n", f"{Fore.MAGENTA}")
-            return
+        if args.recursive_skip:
+            found = recursive_search(os.path.basename(file_path))
+            if found:
+                count_skip += 1
+                log2("rskip:", f"{Fore.LIGHTYELLOW_EX}")
+                log2(" ")
+                log2(f"{found}\n", f"{Fore.MAGENTA}")
+                return
 
         if os.path.isfile(file_path):
             if args.skip:
