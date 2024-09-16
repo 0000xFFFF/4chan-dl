@@ -3,7 +3,6 @@
 import sys
 import os
 import argparse
-import re
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,20 +21,24 @@ parser.add_argument('-t', '--threads', metavar='num_threads', type=int, default=
 parser.add_argument('-v', '--verbose', action='store_true', help="be more verbose")
 args = parser.parse_args()
 
+
 def log(text, color=""):
     if args.verbose:
         sys.stdout.write(f"{Style.NORMAL}{color}{text}{Style.RESET_ALL}")
         sys.stdout.flush()
 
+
 def log2(text, color=""):
     sys.stdout.write(f"{Style.NORMAL}{color}{text}{Style.RESET_ALL}")
     sys.stdout.flush()
 
+
 log(f"{args}\n")
+
 
 os.makedirs(args.directory, exist_ok=True)
 
-log(f"Downloading page...\n")
+log("Downloading page...\n")
 
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' }
 response = requests.get(args.url, headers=headers)
@@ -62,6 +65,7 @@ if args.filter is not None:
         url_filter = {line.strip() for line in file1.readlines()}
         url_filter_n = len(url_filter)
 
+
 def get_new_name(file_path, existing_paths):
     num = 1
     original_file_path = file_path
@@ -71,7 +75,8 @@ def get_new_name(file_path, existing_paths):
         file_path = f"{file_name}_{num}{file_extension}"
     return file_path
 
-log(f"+==[ Processing page...\n")
+
+log("+==[ Processing page...\n")
 
 
 for i, file_div in enumerate(file_divs):
@@ -79,7 +84,7 @@ for i, file_div in enumerate(file_divs):
     file_url = 'https:' + link['href']
 
     x = (f"{(i+1)}").rjust(n_str_len)
-    log(f"|-> ")
+    log("|-> ")
     log(f"{x}/{n}", f"{Fore.YELLOW}")
     log(" | ")
     log(f"{file_url}", f"{Fore.GREEN}")
@@ -95,7 +100,8 @@ for i, file_div in enumerate(file_divs):
         title = link['title']
         post_name_with_ext = title
         file_name_with_ext = title
-    if args.postid: file_name_with_ext = post_id_with_ext
+    if args.postid:
+        file_name_with_ext = post_id_with_ext
 
     if args.combine:
         file_name_with_ext = os.path.splitext(post_id_with_ext)[0] + "_" + post_name_with_ext
@@ -106,24 +112,24 @@ for i, file_div in enumerate(file_divs):
     if args.filter and file_url in url_filter:
         filtered = True
         count_filtered += 1
-        log(f"filtered", f"{Fore.LIGHTYELLOW_EX}")
+        log("filtered", f"{Fore.LIGHTYELLOW_EX}")
         log(" | ")
 
     elif any(existing_file_path == file_path for _, existing_file_path in download_list):
         file_path = get_new_name(file_path, existing_paths)
         count_renamed += 1
-        log(f"renamed", f"{Fore.LIGHTYELLOW_EX}")
+        log("renamed", f"{Fore.LIGHTYELLOW_EX}")
         log("  | ")
     else:
         count_original += 1
-        log(f"original", f"{Fore.BLUE}")
+        log("original", f"{Fore.BLUE}")
         log(" | ")
-
 
     log(f"{file_path}", f"{Fore.MAGENTA}")
     log("\n")
 
-    if filtered: continue
+    if filtered:
+        continue
 
     existing_paths.add(file_path)
     download_list.append([file_url, file_path])
@@ -138,7 +144,8 @@ log(f"|-> renamed post names.: {count_renamed}\n")
 log(f"|-> files to download..: {download_list_n}\n")
 log("\n")
 
-log2(f"+==[ Downloading files...\n")
+log2("+==[ Downloading files...\n")
+
 
 def download_file(i, file_url, file_path):
     global count_skip
@@ -166,7 +173,8 @@ def download_file(i, file_url, file_path):
                 log2(" ")
 
         log2(f"{file_path}\n", f"{Fore.MAGENTA}")
-        if skip: return
+        if skip:
+            return
 
     file_response = requests.get(file_url, headers=headers)
     with open(file_path, 'wb') as f:
@@ -174,6 +182,7 @@ def download_file(i, file_url, file_path):
 
     with mutex_lock:
         count_download += 1
+
 
 try:
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
@@ -194,14 +203,14 @@ log(f"|-> skipped files......: {count_skip}\n")
 log(f"|-> overwritten files..: {count_overwrite}\n")
 log("\n")
 
-log(f"+==[ INFO\n")
-log(f"|+==[ Processing page \n")
+log("+==[ INFO\n")
+log("|+==[ Processing page \n")
 log(f"||-> total files........: {n}\n")
 log(f"||-> filtered urls......: {count_filtered}/{url_filter_n}\n")
 log(f"||-> original post names: {count_original}\n")
 log(f"||-> renamed post names.: {count_renamed}\n")
 log(f"||-> files to download..: {len(download_list)}\n")
-log(f"|+==[ Downloading files\n")
+log("|+==[ Downloading files\n")
 log(f"||-> downloaded files...: {count_download}\n")
 log(f"||-> skipped files......: {count_skip}\n")
 log(f"||-> overwritten files..: {count_overwrite}\n")
