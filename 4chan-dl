@@ -216,7 +216,7 @@ try:
             try:
                 future.result()
             except Exception as exc:
-                log(f"Exception occurred: {exc}\n", "{Fore.RED}")
+                log(f"Exception occurred: {exc}\n", f"{Fore.RED}")
 
 except KeyboardInterrupt:
     print("\n\n")
