@@ -1,3 +1,6 @@
+undetected_chromedriver
 requests
+bs4
 beautifulsoup4
 colorama
+setuptools

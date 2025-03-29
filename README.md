@@ -6,10 +6,12 @@ Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 <br>
 If the thread has multiple files with the same posted filename the files will be renamed (downloaded with a different name).
 
-## Requirements - pip
-* requests
-* beautifulsoup4
-* colorama
+
+## Setup virtual environment - before running anything
+```
+./setup-env.sh
+source p3env/bin/activate
+```
 
 ## Running
 ```
@@ -47,3 +49,9 @@ options:
   -v, --verbose         be more verbose
   -g, --goodargs        -crvt 5
 ```
+
+# Diclaimer
+* This project is for educational and personal use only.
+* The author is not responsible for how this tool is used.
+* Please respect 4chan’s Rules and avoid scraping illegal or prohibited content.
+
