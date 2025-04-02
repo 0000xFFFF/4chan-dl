@@ -7,10 +7,10 @@ Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 If the thread has multiple files with the same posted filename the files will be renamed (downloaded with a different name).
 
 
-## Setup virtual environment - before running anything
+## Setup virtual environment & install - before running anything
 ```
 ./setup-env.sh
-source p3env/bin/activate
+./install.sh
 ```
 
 ## Running
