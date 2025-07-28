@@ -8,24 +8,26 @@ If the thread has multiple files with the same posted filename the files will be
 
 
 ## Setup virtual environment & install - before running anything
-```
+```sh
 ./setup-env.sh
 ./install.sh
 ```
 
 ## Running
-```
+```sh
 ./4chan-dl -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
 ## Recommend way to run
 Just downloads new files in thread.
-```
+```sh
 ./4chan-dl -g -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
 ## Usage
-###### ./4chan-dl -h
+```sh
+./4chan-dl -h
+```
 ```
 usage: 4chan-dl [-h] [-d directory] [-s] [-r] [-p] [-c] [-f file.txt] [-t num_threads] [-v] [-g] url
 
