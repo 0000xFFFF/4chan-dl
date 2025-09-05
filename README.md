@@ -8,7 +8,7 @@ If the thread has multiple files with the same posted filename the files will be
 
 ## UserScript ([Violent Monkey](https://violentmonkey.github.io/get-it/), ...)
 
-Adds a button to the bottom right corner of the page to download all the content in a zip file.
+Adds a button, to the bottom right corner of the page, to download all the content in a zip file.
 
 ### Preview
 <img src="preview/preview.gif" width="413" height="211">
