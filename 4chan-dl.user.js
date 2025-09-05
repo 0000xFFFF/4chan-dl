@@ -38,7 +38,6 @@
         button.id = "4chan_dl_button";
         button.innerHTML = '📦 Download All as ZIP';
         button.style.cssText = `
-            z-index: 9999;
             padding: 12px 18px;
             background: #2d5016;
             color: white;
@@ -68,49 +67,18 @@
         return button;
     }
 
-    function createSettings(parent) {
+    function createSettings() {
 
         const container = document.createElement('div');
         container.style.cssText = `
             display: flex;
-            gap: 10px;
-            margin-top: 10px;
+            gap: 1px;
             justify-content: flex-end;
             align-items: center;
         `;
 
-        const closeButton = document.createElement('button');
-        closeButton.innerHTML = '❌ Close';
-        closeButton.style.cssText = `
-            z-index: 9999;
-            padding: 5px 10px;
-            background: #230016;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        `;
 
-        closeButton.addEventListener('mouseenter', () => {
-            closeButton.style.background = '#4d0016';
-            closeButton.style.transform = 'translateY(-2px)';
-            closeButton.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
-        });
 
-        closeButton.addEventListener('mouseleave', () => {
-            closeButton.style.background = '#230016';
-            closeButton.style.transform = 'translateY(0)';
-            closeButton.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
-        });
-
-        closeButton.addEventListener('click', function() {
-            parent.style.display = 'none';
-        });
 
         const originalNamesInput = document.createElement('input');
         originalNamesInput.type = 'radio';
@@ -172,7 +140,6 @@
             }
         });
 
-        container.appendChild(closeButton);
         container.appendChild(originalNamesInput);
         container.appendChild(postIdsInput);
         container.appendChild(combineNamesInput);
@@ -183,36 +150,32 @@
     function createProgressIndicator() {
         const progressContainer = document.createElement('div');
         progressContainer.style.cssText = `
-            position: fixed;
-            bottom: 120px;
-            right: 10px;
-            z-index: 9999;
-            background: rgba(0,0,0,0.9);
+            padding-left: 15px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+            font-family: arial, helvetica, sans-serif;
             color: white;
-            padding: 15px;
-            border-radius: 8px;
-            min-width: 280px;
-            display: none;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
         `;
+
+        const bodyColor = getComputedStyle(document.body).color;
 
         const progressText = document.createElement('div');
         progressText.id = 'zip-progress-text';
         progressText.style.cssText = `
-            font-size: 13px;
-            margin-bottom: 8px;
-            font-weight: 500;
         `;
         progressText.textContent = 'Preparing download...';
+        progressText.style.color = bodyColor;
 
         const progressBar = document.createElement('div');
         progressBar.style.cssText = `
-            width: 100%;
+            width: 200px;
             height: 8px;
             background: #333;
             border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 5px;
         `;
 
         const progressFill = document.createElement('div');
@@ -228,16 +191,15 @@
         const progressPercent = document.createElement('div');
         progressPercent.id = 'zip-progress-percent';
         progressPercent.style.cssText = `
-            font-size: 11px;
-            text-align: center;
-            color: #ccc;
         `;
         progressPercent.textContent = '0%';
+        progressPercent.style.color = bodyColor;
 
-        progressBar.appendChild(progressFill);
-        progressContainer.appendChild(progressText);
-        progressContainer.appendChild(progressBar);
+
         progressContainer.appendChild(progressPercent);
+        progressBar.appendChild(progressFill);
+        progressContainer.appendChild(progressBar);
+        progressContainer.appendChild(progressText);
 
         return progressContainer;
     }
@@ -335,9 +297,10 @@
             return;
         }
 
+        const container = document.getElementById("4chan_dl_cont");
         const progressIndicator = createProgressIndicator();
-        document.body.appendChild(progressIndicator);
-        progressIndicator.style.display = 'block';
+        container.appendChild(progressIndicator);
+        progressIndicator.style.display = 'flex';
 
         console.log(`Found ${imageLinks.length} images to download`);
 
@@ -433,8 +396,8 @@
             setTimeout(() => URL.revokeObjectURL(downloadLink.href), 5000);
 
             setTimeout(() => {
-                progressIndicator.style.display = 'none';
-                document.body.removeChild(progressIndicator);
+                //progressIndicator.style.display = 'none';
+                //container.removeChild(progressIndicator);
 
                 const sizeInMB = (zipBlob.size / (1024 * 1024)).toFixed(2);
                 const message = `✅ ZIP Download Complete!\n\n` +
@@ -465,28 +428,25 @@
         setTimeout(async () => {
             try {
                 const containerDiv = document.createElement('div');
+                containerDiv.id = "4chan_dl_cont";
                 containerDiv.style.cssText = `
-                    background-color: rgba(0, 0, 0, 0.4);
-                    position: fixed;
-                    bottom: 10px;
-                    right: 10px;
-                    z-index: 9999;
                     display: flex;
-                    flex-direction: column;
-                    align-items: flex-end;
-                    padding: 10px;
-                    border-radius: 20px;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                    margin: 15px 0 15px 0;
                 `;
 
-                const settingsContainer = createSettings(containerDiv);
+                const settingsContainer = createSettings();
                 const downloadButton = createDownloadButton();
 
-                downloadButton.addEventListener('click', downloadAllImagesAsZip);
+                downloadButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    downloadAllImagesAsZip();
+                });
 
                 containerDiv.appendChild(downloadButton);
                 containerDiv.appendChild(settingsContainer);
-                document.body.appendChild(containerDiv);
+
+                const threadElement = document.querySelector(".thread");
+                threadElement.parentElement.insertBefore(containerDiv, threadElement);
 
                 const imageLinks = findImageLinks();
                 console.log(`Found ${imageLinks.length} images on page:`, imageLinks);
@@ -502,4 +462,3 @@
     init();
 
 })();
-
