@@ -30,7 +30,7 @@ Adds a button, to the bottom right corner of the page, to download all the conte
 ./4chan-dl -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
-### Recommend way to run
+### Recommended way to run
 Just downloads new files in thread.
 ```sh
 ./4chan-dl -g -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
