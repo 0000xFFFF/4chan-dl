@@ -6,25 +6,36 @@ Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted 
 <br>
 If the thread has multiple files with the same posted filename the files will be renamed (downloaded with a different name).
 
+## UserScript ([Violent Monkey](https://violentmonkey.github.io/get-it/), ...)
 
-## Setup virtual environment & install - before running anything
+Adds a button to the bottom right corner of the page to download all the content in a zip file.
+
+### Preview
+<img src="preview/preview.gif" width="413" height="211">
+
+
+### [<img src="preview/4chan-dl.ico" width="16" height="16"> Click here to install <img src="preview/4chan-dl.ico" width="16" height="16">](https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js)
+
+
+## Python
+### Setup virtual environment & install - before running anything
 ```sh
 ./setup-env.sh
 ./install.sh
 ```
 
-## Running
+### Running
 ```sh
 ./4chan-dl -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
-## Recommend way to run
+### Recommend way to run
 Just downloads new files in thread.
 ```sh
 ./4chan-dl -g -d downloads "https://boards.4chan.org/XX/thread/XXXXXXX"
 ```
 
-## Usage
+### Usage
 ```sh
 ./4chan-dl -h
 ```
