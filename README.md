@@ -1,7 +1,5 @@
 # 4chan-dl
 
-[![Python 3.12.5](https://img.shields.io/badge/Python-3.12.5-yellow.svg)](http://www.python.org/download/)
-
 Download media files (.jpg, .jpeg, .webm, ...) from 4chan.org with their posted filenames.
 <br>
 If the thread has multiple files with the same posted filename the files will be renamed (downloaded with a different name).
@@ -17,7 +15,10 @@ Adds a button, to the bottom right corner of the page, to download all the conte
 ### [<img src="preview/4chan-dl.ico" width="16" height="16"> Click here to install <img src="preview/4chan-dl.ico" width="16" height="16">](https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js)
 
 
-## Python
+## Python version
+
+[![Python 3.12.5](https://img.shields.io/badge/Python-3.12.5-yellow.svg)](http://www.python.org/download/)
+
 ### Setup virtual environment & install - before running anything
 ```sh
 ./setup-env.sh
