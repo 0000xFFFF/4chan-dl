@@ -1,16 +1,14 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.0
-// @description  Download all images from 4chan
+// @version      1.1
+// @description  Download all content from 4chan.
 // @author       0000xFFFF
-// @match        http://www.4chan.org/*
-// @match        http://boards.4chan.org/*
-// @match        http://www.4channel.org/*
-// @match        http://boards.4channel.org/*
+// @match        *://boards.4chan.org/*/thread/*
+// @match        *://boards.4channel.org/*/thread/*
+// @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
 // @grant        none
 // ==/UserScript==
-
 (function() {
     'use strict';
 
@@ -19,40 +17,41 @@
         useOriginalNames: true,
         usePostIds: false,
         combineNames: false,
-        skipExisting: true,
-        maxConcurrentDownloads: 3
+        maxConcurrentDownloads: 5
     };
 
     // Create download button
     function createDownloadButton() {
         const button = document.createElement('button');
-        button.innerHTML = '📥 Download All Images';
+        button.innerHTML = '📦 Download All as ZIP';
         button.style.cssText = `
             position: fixed;
-            top: 10px;
+            bottom: 10px;
             right: 10px;
             z-index: 9999;
-            padding: 10px 15px;
-            background: #0f4c75;
+            padding: 12px 18px;
+            background: #2d5016;
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             font-weight: bold;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
         `;
 
         // Hover effect
         button.addEventListener('mouseenter', () => {
-            button.style.background = '#1e6ba8';
-            button.style.transform = 'translateY(-1px)';
+            button.style.background = '#4a7c21';
+            button.style.transform = 'translateY(-2px)';
+            button.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
         });
 
         button.addEventListener('mouseleave', () => {
-            button.style.background = '#0f4c75';
+            button.style.background = '#2d5016';
             button.style.transform = 'translateY(0)';
+            button.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
         });
 
         return button;
@@ -63,78 +62,98 @@
         const progressContainer = document.createElement('div');
         progressContainer.style.cssText = `
             position: fixed;
-            top: 60px;
+            bottom: 65px;
             right: 10px;
             z-index: 9999;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             color: white;
-            padding: 10px;
-            border-radius: 5px;
-            min-width: 200px;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 280px;
             display: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         `;
 
         const progressText = document.createElement('div');
-        progressText.id = 'download-progress-text';
+        progressText.id = 'zip-progress-text';
+        progressText.style.cssText = `
+            font-size: 13px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        `;
         progressText.textContent = 'Preparing download...';
 
         const progressBar = document.createElement('div');
         progressBar.style.cssText = `
             width: 100%;
-            height: 6px;
+            height: 8px;
             background: #333;
-            border-radius: 3px;
-            margin-top: 5px;
+            border-radius: 4px;
             overflow: hidden;
+            margin-bottom: 5px;
         `;
 
         const progressFill = document.createElement('div');
-        progressFill.id = 'download-progress-fill';
+        progressFill.id = 'zip-progress-fill';
         progressFill.style.cssText = `
             height: 100%;
-            background: #4CAF50;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
             width: 0%;
             transition: width 0.3s ease;
+            border-radius: 4px;
         `;
+
+        const progressPercent = document.createElement('div');
+        progressPercent.id = 'zip-progress-percent';
+        progressPercent.style.cssText = `
+            font-size: 11px;
+            text-align: center;
+            color: #ccc;
+        `;
+        progressPercent.textContent = '0%';
 
         progressBar.appendChild(progressFill);
         progressContainer.appendChild(progressText);
         progressContainer.appendChild(progressBar);
+        progressContainer.appendChild(progressPercent);
 
         return progressContainer;
     }
 
-    // Find all image links (adapt this selector for your site's structure)
+    // Find all image links
     function findImageLinks() {
         const imageLinks = [];
-        
+
         // Look for divs with class 'fileText' (4chan-like structure)
         const fileTexts = document.querySelectorAll('div.fileText');
-        
+
         fileTexts.forEach((fileDiv, index) => {
             const link = fileDiv.querySelector('a');
             if (link && link.href) {
                 const url = link.href.startsWith('//') ? 'https:' + link.href : link.href;
-                
-                // Extract filename information
-                const postId = url.split('/').pop();
-                const originalName = link.textContent.trim() || link.title || postId;
-                
-                imageLinks.push({
-                    url: url,
-                    originalName: originalName,
-                    postId: postId,
-                    index: index + 1
-                });
+
+                // Check if it's likely an image
+                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+                if (isImage) {
+                    const postId = url.split('/').pop().split('?')[0];
+                    const originalName = link.textContent.trim() || link.title || postId;
+
+                    imageLinks.push({
+                        url: url,
+                        originalName: originalName,
+                        postId: postId,
+                        index: index + 1
+                    });
+                }
             }
         });
 
         // Fallback: look for direct image links
         if (imageLinks.length === 0) {
-            const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"]');
+            const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
             imgElements.forEach((img, index) => {
                 const url = img.src;
-                const filename = url.split('/').pop();
+                const filename = url.split('/').pop().split('?')[0];
                 imageLinks.push({
                     url: url,
                     originalName: filename,
@@ -150,7 +169,7 @@
     // Generate filename based on configuration
     function generateFilename(imageData) {
         let filename;
-        
+
         if (config.usePostIds) {
             filename = imageData.postId;
         } else if (config.combineNames) {
@@ -162,56 +181,39 @@
 
         // Sanitize filename
         filename = filename.replace(/[<>:"/\\|?*]/g, '_');
-        
+
         return filename;
     }
 
-    // Download a single file
-    async function downloadFile(imageData, filename) {
-        try {
-            const response = await fetch(imageData.url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const blob = await response.blob();
-            
-            // Create download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(blob);
-            downloadLink.download = filename;
-            downloadLink.style.display = 'none';
-            
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-            
-            // Clean up object URL
-            setTimeout(() => URL.revokeObjectURL(downloadLink.href), 1000);
-            
-            return { success: true, filename: filename };
-        } catch (error) {
-            console.error(`Failed to download ${imageData.url}:`, error);
-            return { success: false, filename: filename, error: error.message };
-        }
-    }
-
     // Update progress indicator
-    function updateProgress(current, total, filename = '') {
-        const progressText = document.getElementById('download-progress-text');
-        const progressFill = document.getElementById('download-progress-fill');
-        
-        if (progressText && progressFill) {
+    function updateProgress(current, total, status = '', filename = '') {
+        const progressText = document.getElementById('zip-progress-text');
+        const progressFill = document.getElementById('zip-progress-fill');
+        const progressPercent = document.getElementById('zip-progress-percent');
+
+        if (progressText && progressFill && progressPercent) {
             const percentage = Math.round((current / total) * 100);
-            progressText.textContent = `Downloading ${current}/${total} - ${filename}`;
+
+            let displayText = status;
+            if (filename) {
+                displayText += ` - ${filename}`;
+            }
+            if (current <= total) {
+                displayText = `${status} (${current}/${total})` + (filename ? ` - ${filename}` : '');
+            }
+
+            progressText.textContent = displayText;
             progressFill.style.width = `${percentage}%`;
+            progressPercent.textContent = `${percentage}%`;
         }
     }
 
-    // Main download function
-    async function downloadAllImages() {
+    // Download images and create ZIP
+    async function downloadAllImagesAsZip() {
         const imageLinks = findImageLinks();
-        
+
         if (imageLinks.length === 0) {
-            alert('No images found on this page!');
+            alert('No images found on this page!\n\nMake sure your page has images in div.fileText elements or direct img tags.');
             return;
         }
 
@@ -220,89 +222,168 @@
         progressIndicator.style.display = 'block';
 
         console.log(`Found ${imageLinks.length} images to download`);
-        
+
+        const zip = new JSZip();
+        const downloadedFilenames = new Set();
         let completed = 0;
         let successful = 0;
-        const downloadedFilenames = new Set();
 
-        // Process downloads with concurrency limit
+        updateProgress(0, imageLinks.length, 'Initializing', '');
+
+        // Process downloads with concurrency control
         const downloadQueue = [...imageLinks];
         const activeDownloads = new Set();
 
-        const processNext = async () => {
-            if (downloadQueue.length === 0 || activeDownloads.size >= config.maxConcurrentDownloads) {
-                return;
-            }
-
-            const imageData = downloadQueue.shift();
+        const downloadImage = async (imageData) => {
             let filename = generateFilename(imageData);
-            
+
             // Handle duplicate filenames
             let counter = 1;
             const originalFilename = filename;
             while (downloadedFilenames.has(filename)) {
-                const [name, ext] = originalFilename.split('.').length > 1 
-                    ? [originalFilename.substring(0, originalFilename.lastIndexOf('.')), originalFilename.substring(originalFilename.lastIndexOf('.'))]
-                    : [originalFilename, ''];
-                filename = `${name}_${counter}${ext}`;
+                const dotIndex = originalFilename.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    const name = originalFilename.substring(0, dotIndex);
+                    const ext = originalFilename.substring(dotIndex);
+                    filename = `${name}_${counter}${ext}`;
+                } else {
+                    filename = `${originalFilename}_${counter}`;
+                }
                 counter++;
             }
-            
-            downloadedFilenames.add(filename);
-            activeDownloads.add(imageData);
 
-            updateProgress(completed + 1, imageLinks.length, filename);
+            downloadedFilenames.add(filename);
 
             try {
-                const result = await downloadFile(imageData, filename);
-                if (result.success) {
-                    successful++;
-                    console.log(`✓ Downloaded: ${result.filename}`);
-                } else {
-                    console.error(`✗ Failed: ${result.filename} - ${result.error}`);
+                updateProgress(completed + 1, imageLinks.length, 'Downloading', filename);
+
+                const response = await fetch(imageData.url);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status} - ${response.statusText}`);
                 }
+
+                const blob = await response.blob();
+                zip.file(filename, blob);
+                successful++;
+                console.log(`✓ Added to ZIP: ${filename}`);
+                return { success: true, filename };
             } catch (error) {
-                console.error(`✗ Error downloading ${filename}:`, error);
-            } finally {
-                completed++;
-                activeDownloads.delete(imageData);
-                
-                // Start next download
-                processNext();
-                
-                // Check if all downloads are complete
-                if (completed === imageLinks.length) {
-                    setTimeout(() => {
-                        progressIndicator.style.display = 'none';
-                        document.body.removeChild(progressIndicator);
-                        
-                        const message = `Download complete!\n\nTotal: ${imageLinks.length}\nSuccessful: ${successful}\nFailed: ${imageLinks.length - successful}`;
-                        alert(message);
-                        console.log(message);
-                    }, 1000);
-                }
+                console.error(`✗ Failed to download ${imageData.url}:`, error);
+                return { success: false, filename, error: error.message };
             }
         };
 
-        // Start initial downloads
-        for (let i = 0; i < config.maxConcurrentDownloads && i < imageLinks.length; i++) {
-            processNext();
+        // Download with concurrency limit
+        const processDownloads = async () => {
+            const promises = [];
+
+            for (const imageData of imageLinks) {
+                promises.push(downloadImage(imageData));
+
+                // Wait for some downloads to complete if we hit the limit
+                if (promises.length >= config.maxConcurrentDownloads) {
+                    await Promise.all(promises.splice(0, config.maxConcurrentDownloads));
+                }
+            }
+
+            // Wait for remaining downloads
+            if (promises.length > 0) {
+                await Promise.all(promises);
+            }
+        };
+
+        try {
+            await processDownloads();
+            completed = imageLinks.length;
+
+            // Generate ZIP file
+            updateProgress(completed, imageLinks.length, 'Creating ZIP file', '');
+
+            const zipBlob = await zip.generateAsync({
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: {
+                    level: 6
+                }
+            });
+
+            // Create filename with timestamp
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0,19).replace(/:/g, '-');
+            const pageTitle = document.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
+            const zipFilename = `${pageTitle || 'images'}_${timestamp}.zip`;
+
+            // Download ZIP file
+            updateProgress(completed, imageLinks.length, 'Downloading ZIP', zipFilename);
+
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(zipBlob);
+            downloadLink.download = zipFilename;
+            downloadLink.style.display = 'none';
+
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+
+            // Cleanup
+            setTimeout(() => URL.revokeObjectURL(downloadLink.href), 5000);
+
+            // Show completion message
+            setTimeout(() => {
+                progressIndicator.style.display = 'none';
+                document.body.removeChild(progressIndicator);
+
+                const sizeInMB = (zipBlob.size / (1024 * 1024)).toFixed(2);
+                const message = `✅ ZIP Download Complete!\n\n` +
+                    `📁 File: ${zipFilename}\n` +
+                    `📊 Total images: ${imageLinks.length}\n` +
+                    `✅ Successful: ${successful}\n` +
+                    `❌ Failed: ${imageLinks.length - successful}\n` +
+                    `💾 ZIP size: ${sizeInMB} MB`;
+
+                alert(message);
+                console.log(message);
+            }, 1000);
+
+        } catch (error) {
+            console.error('Error creating ZIP:', error);
+            progressIndicator.style.display = 'none';
+            document.body.removeChild(progressIndicator);
+            alert(`❌ Error creating ZIP file:\n${error.message}`);
         }
     }
 
     // Initialize the userscript
-    function init() {
+    async function init() {
         // Wait for page to load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
             return;
         }
 
-        const downloadButton = createDownloadButton();
-        downloadButton.addEventListener('click', downloadAllImages);
-        document.body.appendChild(downloadButton);
+        // Wait a bit more for dynamic content
+        setTimeout(async () => {
+            try {
+                const downloadButton = createDownloadButton();
+                downloadButton.addEventListener('click', downloadAllImagesAsZip);
+                document.body.appendChild(downloadButton);
 
-        console.log('Image Downloader userscript loaded');
+                console.log('JSZip Image Downloader userscript loaded');
+
+                // Pre-load JSZip in background
+                loadJSZip().then(() => {
+                    console.log('JSZip pre-loaded successfully');
+                }).catch(error => {
+                    console.warn('Failed to pre-load JSZip:', error);
+                });
+
+                // Log found images for debugging
+                const imageLinks = findImageLinks();
+                console.log(`Found ${imageLinks.length} images on page:`, imageLinks);
+            } catch (error) {
+                console.error('Error initializing userscript:', error);
+            }
+        }, 500);
     }
 
     // Start the script
