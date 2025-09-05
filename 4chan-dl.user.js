@@ -14,7 +14,6 @@
 (function() {
     'use strict';
 
-    // Configuration
     function loadSetting(name, def) {
         const raw = localStorage.getItem(name);
         if (raw === null) {
@@ -34,7 +33,6 @@
         maxConcurrentDownloads: loadSetting("maxConcurrentDownloads", 5)
     };
 
-    // Create download button
     function createDownloadButton() {
         const button = document.createElement('button');
         button.id = "4chan_dl_button";
@@ -70,8 +68,8 @@
         return button;
     }
 
-    // Create settings radio buttons
-    function createSettings() {
+    function createSettings(parent) {
+
         const container = document.createElement('div');
         container.style.cssText = `
             display: flex;
@@ -81,7 +79,39 @@
             align-items: center;
         `;
 
-        // useOriginalNames radio button
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '❌ Close';
+        closeButton.style.cssText = `
+            z-index: 9999;
+            padding: 5px 10px;
+            background: #230016;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        `;
+
+        closeButton.addEventListener('mouseenter', () => {
+            closeButton.style.background = '#4d0016';
+            closeButton.style.transform = 'translateY(-2px)';
+            closeButton.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
+        });
+
+        closeButton.addEventListener('mouseleave', () => {
+            closeButton.style.background = '#230016';
+            closeButton.style.transform = 'translateY(0)';
+            closeButton.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
+        });
+
+        closeButton.addEventListener('click', function() {
+            parent.style.display = 'none';
+        });
+
         const originalNamesInput = document.createElement('input');
         originalNamesInput.type = 'radio';
         originalNamesInput.id = 'radioOriginalNames';
@@ -102,7 +132,6 @@
             }
         });
 
-        // usePostIds radio button
         const postIdsInput = document.createElement('input');
         postIdsInput.type = 'radio';
         postIdsInput.id = 'radioPostIds';
@@ -123,7 +152,6 @@
             }
         });
 
-        // combineNames radio button
         const combineNamesInput = document.createElement('input');
         combineNamesInput.type = 'radio';
         combineNamesInput.id = 'radioCombineNames';
@@ -144,6 +172,7 @@
             }
         });
 
+        container.appendChild(closeButton);
         container.appendChild(originalNamesInput);
         container.appendChild(postIdsInput);
         container.appendChild(combineNamesInput);
@@ -151,7 +180,6 @@
         return container;
     }
 
-    // Create progress indicator
     function createProgressIndicator() {
         const progressContainer = document.createElement('div');
         progressContainer.style.cssText = `
@@ -214,7 +242,6 @@
         return progressContainer;
     }
 
-    // Find all image links
     function findImageLinks() {
         const imageLinks = [];
         const fileTexts = document.querySelectorAll('div.fileText');
@@ -256,7 +283,6 @@
         return imageLinks;
     }
 
-    // Generate filename based on configuration
     function generateFilename(imageData) {
         let filename;
 
@@ -274,7 +300,6 @@
         return filename;
     }
 
-    // Update progress indicator
     function updateProgress(current, total, status = '', filename = '') {
         const progressText = document.getElementById('zip-progress-text');
         const progressFill = document.getElementById('zip-progress-fill');
@@ -297,7 +322,6 @@
         }
     }
 
-    // Download images and create ZIP
     async function downloadAllImagesAsZip() {
         const imageLinks = findImageLinks();
 
@@ -386,7 +410,7 @@
             });
 
             const now = new Date();
-            const timestamp = now.toISOString().slice(0,19).replace(/:/g, '-');
+            const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
             const pageTitle = document.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
             const zipFilename = `${pageTitle || 'images'}_${timestamp}.zip`;
 
@@ -437,6 +461,7 @@
             try {
                 const containerDiv = document.createElement('div');
                 containerDiv.style.cssText = `
+                    background-color: rgba(0, 0, 0, 0.4);
                     position: fixed;
                     bottom: 10px;
                     right: 10px;
@@ -444,9 +469,12 @@
                     display: flex;
                     flex-direction: column;
                     align-items: flex-end;
+                    padding: 10px;
+                    border-radius: 20px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
                 `;
 
-                const settingsContainer = createSettings();
+                const settingsContainer = createSettings(containerDiv);
                 const downloadButton = createDownloadButton();
 
                 downloadButton.addEventListener('click', downloadAllImagesAsZip);
