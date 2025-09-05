@@ -184,7 +184,7 @@
         const progressContainer = document.createElement('div');
         progressContainer.style.cssText = `
             position: fixed;
-            bottom: 65px;
+            bottom: 120px;
             right: 10px;
             z-index: 9999;
             background: rgba(0,0,0,0.9);
@@ -254,7 +254,12 @@
                 const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg|webm)(\?|$)/i.test(url);
                 if (isImage) {
                     const postId = url.split('/').pop().split('?')[0];
-                    const originalName = link.title.trim() || link.textContent.trim() || postId;
+                    let originalName = link.title.trim() || link.textContent.trim() || postId;
+
+                    // if 4chan-X is used fix the name fetching
+                    const fnfull = link.querySelector('.fnfull');
+                    if (fnfull) { originalName = fnfull.textContent.trim(); }
+
 
                     imageLinks.push({
                         url: url,
@@ -497,3 +502,4 @@
     init();
 
 })();
+
