@@ -14,7 +14,7 @@ Adds a button, to the bottom right corner of the page, to download all the conte
 
 ### [<img src="preview/4chan-dl.ico" width="16" height="16"> Click here to install <img src="preview/4chan-dl.ico" width="16" height="16">](https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js)
 
-#### note: script also works with [4chan-x](https://github.com/ccd0/4chan-x), since it changes content
+#### note: if you're using [4chan-x](https://github.com/ccd0/4chan-x), the script should still work
 
 ## Python version
 
