@@ -15,21 +15,31 @@
     'use strict';
 
     // Configuration
+    function loadSetting(name, def) {
+        const raw = localStorage.getItem(name);
+        if (raw === null) {
+            localStorage.setItem(name, JSON.stringify(def));
+            return def;
+        }
+        return JSON.parse(raw);
+    }
+    function saveSetting(name, value) {
+        localStorage.setItem(name, JSON.stringify(value));
+    }
+
     const config = {
-        useOriginalNames: true,
-        usePostIds: false,
-        combineNames: false,
-        maxConcurrentDownloads: 5
+        useOriginalNames: loadSetting("useOriginalNames", true),
+        usePostIds: loadSetting("usePostIds", false),
+        combineNames: loadSetting("combineNames", false),
+        maxConcurrentDownloads: loadSetting("maxConcurrentDownloads", 5)
     };
 
     // Create download button
     function createDownloadButton() {
         const button = document.createElement('button');
+        button.id = "4chan_dl_button";
         button.innerHTML = '📦 Download All as ZIP';
         button.style.cssText = `
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
             z-index: 9999;
             padding: 12px 18px;
             background: #2d5016;
@@ -41,6 +51,7 @@
             font-weight: bold;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
+            white-space: nowrap;
         `;
 
         // Hover effect
@@ -57,6 +68,87 @@
         });
 
         return button;
+    }
+
+    // Create settings radio buttons
+    function createSettings() {
+        const container = document.createElement('div');
+        container.style.cssText = `
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            justify-content: flex-end;
+            align-items: center;
+        `;
+
+        // useOriginalNames radio button
+        const originalNamesInput = document.createElement('input');
+        originalNamesInput.type = 'radio';
+        originalNamesInput.id = 'radioOriginalNames';
+        originalNamesInput.name = 'filenameOption';
+        originalNamesInput.checked = config.useOriginalNames;
+        originalNamesInput.style.cssText = `
+            cursor: pointer;
+        `;
+        originalNamesInput.title = 'Use the original filenames from the posts.';
+        originalNamesInput.addEventListener('change', () => {
+            if (originalNamesInput.checked) {
+                saveSetting("useOriginalNames", true);
+                saveSetting("usePostIds", false);
+                saveSetting("combineNames", false);
+                config.useOriginalNames = true;
+                config.usePostIds = false;
+                config.combineNames = false;
+            }
+        });
+
+        // usePostIds radio button
+        const postIdsInput = document.createElement('input');
+        postIdsInput.type = 'radio';
+        postIdsInput.id = 'radioPostIds';
+        postIdsInput.name = 'filenameOption';
+        postIdsInput.checked = config.usePostIds;
+        postIdsInput.style.cssText = `
+            cursor: pointer;
+        `;
+        postIdsInput.title = 'Use post IDs as filenames.';
+        postIdsInput.addEventListener('change', () => {
+            if (postIdsInput.checked) {
+                saveSetting("useOriginalNames", false);
+                saveSetting("usePostIds", true);
+                saveSetting("combineNames", false);
+                config.useOriginalNames = false;
+                config.usePostIds = true;
+                config.combineNames = false;
+            }
+        });
+
+        // combineNames radio button
+        const combineNamesInput = document.createElement('input');
+        combineNamesInput.type = 'radio';
+        combineNamesInput.id = 'radioCombineNames';
+        combineNamesInput.name = 'filenameOption';
+        combineNamesInput.checked = config.combineNames;
+        combineNamesInput.style.cssText = `
+            cursor: pointer;
+        `;
+        combineNamesInput.title = 'Combine post IDs and original filenames.';
+        combineNamesInput.addEventListener('change', () => {
+            if (combineNamesInput.checked) {
+                saveSetting("useOriginalNames", false);
+                saveSetting("usePostIds", false);
+                saveSetting("combineNames", true);
+                config.useOriginalNames = false;
+                config.usePostIds = false;
+                config.combineNames = true;
+            }
+        });
+
+        container.appendChild(originalNamesInput);
+        container.appendChild(postIdsInput);
+        container.appendChild(combineNamesInput);
+
+        return container;
     }
 
     // Create progress indicator
@@ -125,8 +217,6 @@
     // Find all image links
     function findImageLinks() {
         const imageLinks = [];
-
-        // Look for divs with class 'fileText' (4chan-like structure)
         const fileTexts = document.querySelectorAll('div.fileText');
 
         fileTexts.forEach((fileDiv, index) => {
@@ -134,11 +224,10 @@
             if (link && link.href) {
                 const url = link.href.startsWith('//') ? 'https:' + link.href : link.href;
 
-                // Check if it's likely an image
-                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg|webm)(\?|$)/i.test(url);
                 if (isImage) {
                     const postId = url.split('/').pop().split('?')[0];
-                    const originalName = link.textContent.trim() || link.title || postId;
+                    const originalName = link.title.trim() || link.textContent.trim() || postId;
 
                     imageLinks.push({
                         url: url,
@@ -150,7 +239,6 @@
             }
         });
 
-        // Fallback: look for direct image links
         if (imageLinks.length === 0) {
             const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
             imgElements.forEach((img, index) => {
@@ -181,7 +269,6 @@
             filename = imageData.originalName;
         }
 
-        // Sanitize filename
         filename = filename.replace(/[<>:"/\\|?*]/g, '_');
 
         return filename;
@@ -232,14 +319,9 @@
 
         updateProgress(0, imageLinks.length, 'Initializing', '');
 
-        // Process downloads with concurrency control
-        const downloadQueue = [...imageLinks];
-        const activeDownloads = new Set();
-
         const downloadImage = async (imageData) => {
             let filename = generateFilename(imageData);
 
-            // Handle duplicate filenames
             let counter = 1;
             const originalFilename = filename;
             while (downloadedFilenames.has(filename)) {
@@ -258,7 +340,6 @@
 
             try {
                 updateProgress(completed + 1, imageLinks.length, 'Downloading', filename);
-
                 const response = await fetch(imageData.url);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status} - ${response.statusText}`);
@@ -272,23 +353,20 @@
             } catch (error) {
                 console.error(`✗ Failed to download ${imageData.url}:`, error);
                 return { success: false, filename, error: error.message };
+            } finally {
+                completed++;
+                updateProgress(completed, imageLinks.length, 'Downloading', filename);
             }
         };
 
-        // Download with concurrency limit
         const processDownloads = async () => {
             const promises = [];
-
             for (const imageData of imageLinks) {
                 promises.push(downloadImage(imageData));
-
-                // Wait for some downloads to complete if we hit the limit
                 if (promises.length >= config.maxConcurrentDownloads) {
                     await Promise.all(promises.splice(0, config.maxConcurrentDownloads));
                 }
             }
-
-            // Wait for remaining downloads
             if (promises.length > 0) {
                 await Promise.all(promises);
             }
@@ -297,8 +375,6 @@
         try {
             await processDownloads();
             completed = imageLinks.length;
-
-            // Generate ZIP file
             updateProgress(completed, imageLinks.length, 'Creating ZIP file', '');
 
             const zipBlob = await zip.generateAsync({
@@ -309,13 +385,11 @@
                 }
             });
 
-            // Create filename with timestamp
             const now = new Date();
             const timestamp = now.toISOString().slice(0,19).replace(/:/g, '-');
             const pageTitle = document.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
             const zipFilename = `${pageTitle || 'images'}_${timestamp}.zip`;
 
-            // Download ZIP file
             updateProgress(completed, imageLinks.length, 'Downloading ZIP', zipFilename);
 
             const downloadLink = document.createElement('a');
@@ -327,10 +401,8 @@
             downloadLink.click();
             document.body.removeChild(downloadLink);
 
-            // Cleanup
             setTimeout(() => URL.revokeObjectURL(downloadLink.href), 5000);
 
-            // Show completion message
             setTimeout(() => {
                 progressIndicator.style.display = 'none';
                 document.body.removeChild(progressIndicator);
@@ -355,40 +427,45 @@
         }
     }
 
-    // Initialize the userscript
     async function init() {
-        // Wait for page to load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', init);
             return;
         }
 
-        // Wait a bit more for dynamic content
         setTimeout(async () => {
             try {
+                const containerDiv = document.createElement('div');
+                containerDiv.style.cssText = `
+                    position: fixed;
+                    bottom: 10px;
+                    right: 10px;
+                    z-index: 9999;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: flex-end;
+                `;
+
+                const settingsContainer = createSettings();
                 const downloadButton = createDownloadButton();
+
                 downloadButton.addEventListener('click', downloadAllImagesAsZip);
-                document.body.appendChild(downloadButton);
 
-                console.log('JSZip Image Downloader userscript loaded');
+                containerDiv.appendChild(downloadButton);
+                containerDiv.appendChild(settingsContainer);
+                document.body.appendChild(containerDiv);
 
-                // Pre-load JSZip in background
-                loadJSZip().then(() => {
-                    console.log('JSZip pre-loaded successfully');
-                }).catch(error => {
-                    console.warn('Failed to pre-load JSZip:', error);
-                });
-
-                // Log found images for debugging
                 const imageLinks = findImageLinks();
                 console.log(`Found ${imageLinks.length} images on page:`, imageLinks);
+
+                document.getElementById("4chan_dl_button").innerHTML = `📦 Download All (${imageLinks.length}) as ZIP`;
+
             } catch (error) {
                 console.error('Error initializing userscript:', error);
             }
         }, 500);
     }
 
-    // Start the script
     init();
 
 })();
