@@ -9,7 +9,7 @@ If the thread has multiple files with the same posted filename the files will be
 Adds a button that lets you download all the content from a thread in a zip file.
 
 ### Preview
-<img src="preview/preview.png" width="386" height="193">
+<img src="preview/preview.png" width="772" height="386">
 
 
 ### [<img src="preview/4chan-dl.ico" width="16" height="16"> Click here to install <img src="preview/4chan-dl.ico" width="16" height="16">](https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js)
