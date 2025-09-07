@@ -77,9 +77,6 @@
             align-items: center;
         `;
 
-
-
-
         const originalNamesInput = document.createElement('input');
         originalNamesInput.type = 'radio';
         originalNamesInput.id = 'radioOriginalNames';
@@ -204,8 +201,8 @@
         return progressContainer;
     }
 
-    function findImageLinks() {
-        const imageLinks = [];
+    function findMediaLinks() {
+        const mediaLinks = [];
         const fileTexts = document.querySelectorAll('div.fileText');
 
         fileTexts.forEach((fileDiv, index) => {
@@ -213,8 +210,9 @@
             if (link && link.href) {
                 const url = link.href.startsWith('//') ? 'https:' + link.href : link.href;
 
-                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg|webm)(\?|$)/i.test(url);
-                if (isImage) {
+                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+                const isVideo = /\.(mp4|webm|mkv|avi|mov)(\?|$)/i.test(url);
+                if (isImage || isVideo) {
                     const postId = url.split('/').pop().split('?')[0];
                     let originalName = link.title.trim() || link.textContent.trim() || postId;
 
@@ -222,8 +220,7 @@
                     const fnfull = link.querySelector('.fnfull');
                     if (fnfull) { originalName = fnfull.textContent.trim(); }
 
-
-                    imageLinks.push({
+                    mediaLinks.push({
                         url: url,
                         originalName: originalName,
                         postId: postId,
@@ -233,12 +230,15 @@
             }
         });
 
-        if (imageLinks.length === 0) {
+        if (mediaLinks.length === 0) {
             const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
-            imgElements.forEach((img, index) => {
-                const url = img.src;
+            const videoElements = document.querySelectorAll('img[src*="mp4"], img[src*="webm"], img[src*="mkv"], img[src*="avi"], img[src*="mov"]');
+            const mediaElements = [...imgElements, ...videoElements];
+
+            mediaElements.forEach((img_or_vid, index) => {
+                const url = img_or_vid.src;
                 const filename = url.split('/').pop().split('?')[0];
-                imageLinks.push({
+                mediaLinks.push({
                     url: url,
                     originalName: filename,
                     postId: filename,
@@ -247,7 +247,7 @@
             });
         }
 
-        return imageLinks;
+        return mediaLinks;
     }
 
     function generateFilename(imageData) {
@@ -290,7 +290,7 @@
     }
 
     async function downloadAllImagesAsZip() {
-        const imageLinks = findImageLinks();
+        const imageLinks = findMediaLinks();
 
         if (imageLinks.length === 0) {
             alert('No images found on this page!\n\nMake sure your page has images in div.fileText elements or direct img tags.');
@@ -437,7 +437,7 @@
                 const settingsContainer = createSettings();
                 const downloadButton = createDownloadButton();
 
-                downloadButton.addEventListener('click', function (e) {
+                downloadButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     downloadAllImagesAsZip();
                 });
@@ -448,10 +448,10 @@
                 const threadElement = document.querySelector(".thread");
                 threadElement.parentElement.insertBefore(containerDiv, threadElement);
 
-                const imageLinks = findImageLinks();
-                console.log(`Found ${imageLinks.length} images on page:`, imageLinks);
+                const mediaLinks = findMediaLinks();
+                console.log(`Found ${mediaLinks.length} media files on page:`, mediaLinks);
 
-                document.getElementById("4chan_dl_button").innerHTML = `📦 Download All (${imageLinks.length}) as ZIP`;
+                document.getElementById("4chan_dl_button").innerHTML = `📦 Download All (${mediaLinks.length}) as ZIP`;
 
             } catch (error) {
                 console.error('Error initializing userscript:', error);
