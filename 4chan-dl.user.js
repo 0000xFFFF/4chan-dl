@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.1
+// @version      1.2
 // @description  Download all content from 4chan.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
@@ -32,6 +32,40 @@
         combineNames: loadSetting("combineNames", false),
         maxConcurrentDownloads: loadSetting("maxConcurrentDownloads", 5)
     };
+
+    function createDownloadButtons() {
+        const postContainers = document.querySelectorAll(".postContainer");
+
+        postContainers.forEach((postContainer, index) => {
+
+
+            const postInfos = postContainer.querySelectorAll(".postInfo");
+            postInfos.forEach((postInfo, index) => {
+                const button = document.createElement("button");
+                button.innerHTML = '⬇️📦';
+                button.title = "📦 Download All as ZIP from this post down";
+                button.style.cssText = `
+                    padding: 0 0 0 3px;
+                    margin: 0;
+                    background: transparent;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    opacity: 0.3;
+                    float: right;
+                `;
+
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    downloadAllImagesAsZip(postContainer.id.replace("pc", ""));
+                });
+
+                postInfo.appendChild(button);
+            });
+
+
+        });
+    }
 
     function createDownloadButton() {
         const button = document.createElement('button');
@@ -201,38 +235,74 @@
         return progressContainer;
     }
 
-    function findMediaLinks() {
-        const mediaLinks = [];
-        const fileTexts = document.querySelectorAll('div.fileText');
+    function postFileTextToMediaLink(fileText, index) {
 
-        fileTexts.forEach((fileDiv, index) => {
-            const link = fileDiv.querySelector('a');
-            if (link && link.href) {
-                const url = link.href.startsWith('//') ? 'https:' + link.href : link.href;
+        const link = fileText.querySelector('a');
+        if (link && link.href) {
+            const url = link.href.startsWith('//') ? 'https:' + link.href : link.href;
 
-                const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
-                const isVideo = /\.(mp4|webm|mkv|avi|mov)(\?|$)/i.test(url);
-                if (isImage || isVideo) {
-                    const postId = url.split('/').pop().split('?')[0];
-                    let originalName = link.title.trim() || link.textContent.trim() || postId;
+            const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?|$)/i.test(url);
+            const isVideo = /\.(mp4|webm|mkv|avi|mov)(\?|$)/i.test(url);
+            if (isImage || isVideo) {
+                const postId = url.split('/').pop().split('?')[0];
+                let originalName = link.title.trim() || link.textContent.trim() || postId;
 
-                    // if 4chan-X is used fix the name fetching
-                    const fnfull = link.querySelector('.fnfull');
-                    if (fnfull) { originalName = fnfull.textContent.trim(); }
+                // if 4chan-X is used fix the name fetching
+                const fnfull = link.querySelector('.fnfull');
+                if (fnfull) { originalName = fnfull.textContent.trim(); }
 
-                    mediaLinks.push({
-                        url: url,
-                        originalName: originalName,
-                        postId: postId,
-                        index: index + 1
-                    });
-                }
+                return {
+                    url: url,
+                    originalName: originalName,
+                    postId: postId,
+                    index: index + 1
+                };
             }
-        });
+        }
 
+        return null;
+    }
+
+    function findMediaLinks(startFromThisPostId = "") {
+
+        const mediaLinks = [];
+
+        if (startFromThisPostId != "") {
+
+            let found = false;
+            const fileTexts = document.querySelectorAll('div.fileText');
+            fileTexts.forEach((fileText, index) => {
+
+                if (fileText.id.replace("fT", "") == startFromThisPostId) { found = true; }
+
+                if (found) {
+                    const mediaLink = postFileTextToMediaLink(fileText, index);
+                    if (mediaLink != null) {
+                        mediaLinks.push(mediaLink);
+                    }
+                }
+            });
+
+        }
+        else {
+            const fileTexts = document.querySelectorAll('div.fileText');
+            fileTexts.forEach((fileText, index) => {
+                const mediaLink = postFileTextToMediaLink(fileText, index);
+                if (mediaLink != null) {
+                    mediaLinks.push(mediaLink);
+                }
+            });
+        }
+
+        return mediaLinks;
+    }
+
+
+    function findMediaLinksFromImgAndVideoElements() {
+        const mediaLinks = [];
         if (mediaLinks.length === 0) {
             const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
-            const videoElements = document.querySelectorAll('img[src*="mp4"], img[src*="webm"], img[src*="mkv"], img[src*="avi"], img[src*="mov"]');
+            const videoElements = document.querySelectorAll('video[src*="mp4"], video[src*="webm"], video[src*="mkv"], video[src*="avi"], video[src*="mov"]');
             const mediaElements = [...imgElements, ...videoElements];
 
             mediaElements.forEach((img_or_vid, index) => {
@@ -246,7 +316,6 @@
                 });
             });
         }
-
         return mediaLinks;
     }
 
@@ -289,8 +358,8 @@
         }
     }
 
-    async function downloadAllImagesAsZip() {
-        const imageLinks = findMediaLinks();
+    async function downloadAllImagesAsZip(startFromThisPostId = "") {
+        const imageLinks = findMediaLinks(startFromThisPostId);
 
         if (imageLinks.length === 0) {
             alert('No images found on this page!\n\nMake sure your page has images in div.fileText elements or direct img tags.');
@@ -452,6 +521,8 @@
                 console.log(`Found ${mediaLinks.length} media files on page:`, mediaLinks);
 
                 document.getElementById("4chan_dl_button").innerHTML = `📦 Download All (${mediaLinks.length}) as ZIP`;
+
+                createDownloadButtons();
 
             } catch (error) {
                 console.error('Error initializing userscript:', error);
