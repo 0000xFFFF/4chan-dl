@@ -300,22 +300,19 @@
 
     function findMediaLinksFromImgAndVideoElements() {
         const mediaLinks = [];
-        if (mediaLinks.length === 0) {
-            const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
-            const videoElements = document.querySelectorAll('video[src*="mp4"], video[src*="webm"], video[src*="mkv"], video[src*="avi"], video[src*="mov"]');
-            const mediaElements = [...imgElements, ...videoElements];
-
-            mediaElements.forEach((img_or_vid, index) => {
-                const url = img_or_vid.src;
-                const filename = url.split('/').pop().split('?')[0];
-                mediaLinks.push({
-                    url: url,
-                    originalName: filename,
-                    postId: filename,
-                    index: index + 1
-                });
+        const imgElements = document.querySelectorAll('img[src*="jpg"], img[src*="jpeg"], img[src*="png"], img[src*="gif"], img[src*="webp"], img[src*="bmp"]');
+        const videoElements = document.querySelectorAll('video[src*="mp4"], video[src*="webm"], video[src*="mkv"], video[src*="avi"], video[src*="mov"]');
+        const mediaElements = [...imgElements, ...videoElements];
+        mediaElements.forEach((img_or_vid, index) => {
+            const url = img_or_vid.src;
+            const filename = url.split('/').pop().split('?')[0];
+            mediaLinks.push({
+                url: url,
+                originalName: filename,
+                postId: filename,
+                index: index + 1
             });
-        }
+        });
         return mediaLinks;
     }
 
