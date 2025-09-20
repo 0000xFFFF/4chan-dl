@@ -1,14 +1,16 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.2.0
-// @description  Download all content from 4chan.
+// @version      1.2.1
+// @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
 // @match        *://boards.4channel.org/*/thread/*
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
 // @grant        none
 // @icon         data:image/ico;base64,AAABAAEAEBAAAAEAIAC+AAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAIVJREFUeJxjYMAO/uPARIP/aWeMUTAxBqDYhsMAnK7BUIzNAEIuItoA2rmArDBQOWcoikWSGAP+a50ylcAwBF0jLoPgmrG5hGTNMMAsyELQCyzCrDgTFFhhIpJidM2JBFIlXEMilkBLICJZo8Q3sndAzkaWw2UAA5IEmNa7qCcGwtjkqAYAtUIYeAqEFoUAAAAASUVORK5CYII=
+// @downloadURL  https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
+// @updateURL    https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
 
 // ==/UserScript==
 (function() {
