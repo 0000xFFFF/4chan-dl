@@ -11,7 +11,6 @@
 // @icon         data:image/ico;base64,AAABAAEAEBAAAAEAIAC+AAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAIVJREFUeJxjYMAO/uPARIP/aWeMUTAxBqDYhsMAnK7BUIzNAEIuItoA2rmArDBQOWcoikWSGAP+a50ylcAwBF0jLoPgmrG5hGTNMMAsyELQCyzCrDgTFFhhIpJidM2JBFIlXEMilkBLICJZo8Q3sndAzkaWw2UAA5IEmNa7qCcGwtjkqAYAtUIYeAqEFoUAAAAASUVORK5CYII=
 // @downloadURL  https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
 // @updateURL    https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
-
 // ==/UserScript==
 (function() {
     'use strict';
