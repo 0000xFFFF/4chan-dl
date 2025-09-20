@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.2
+// @version      1.2.0
 // @description  Download all content from 4chan.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
