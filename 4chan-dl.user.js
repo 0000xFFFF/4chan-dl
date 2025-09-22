@@ -14,35 +14,35 @@
 // ==/UserScript==
 
 
-function GM_addStyle(css) {
-    const style = document.createElement("style");
-    style.textContent = css;
-    (document.head || document.documentElement).appendChild(style);
-    return style;
-}
-
-const fcdl_css = `
-.fcdl_button_regular {
-    padding: 12px 18px;
-    display: flex;
-    gap: 5px;
-    background: #2d5016;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    transition: all 0.3s ease;
-    white-space: nowrap;
-}
-`;
-
-GM_addStyle(fcdl_css);
-
 (function() {
     'use strict';
+
+    function GM_addStyle(css) {
+        const style = document.createElement("style");
+        style.textContent = css;
+        (document.head || document.documentElement).appendChild(style);
+        return style;
+    }
+
+    const fcdl_css = `
+    .fcdl_button_regular {
+        padding: 12px 18px;
+        display: flex;
+        gap: 5px;
+        background: #2d5016;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        white-space: nowrap;
+    }
+    `;
+
+    GM_addStyle(fcdl_css);
 
     const userscript_icon = "data:image/ico;base64,AAABAAEADg8AAAEAIAC4AAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAOAAAADwgGAAAA1BT+dAAAAH9JREFUeJxjYMAE/3FgguB/2hljFIxPI4rpODRi2I6hCJtGXC4gWiP1bCTLj2Ro/M+gcs5QFJcGXAZonTKVAFtJjGYMTTDALMhC0KkswqwYCQGsIBFJEbqmRBypCK4wEUtgJOBJfijxhexskPOQ5dA1MiAJgGm9i3piIIxNDgQAf5IV/0loTT0AAAAASUVORK5CYII=";
 
@@ -560,3 +560,4 @@ GM_addStyle(fcdl_css);
     init();
 
 })();
+
