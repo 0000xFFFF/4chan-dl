@@ -40,6 +40,58 @@
         transition: all 0.3s ease;
         white-space: nowrap;
     }
+    .fcdl_button_regular:hover {
+        background: #4a7c21;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+    .fcdl_post_button {
+        padding: 0 0 0 3px;
+        margin: 0;
+        background: transparent;
+        color: white;
+        border: none;
+        cursor: pointer;
+        opacity: 0.6;
+        float: right;
+    }
+    .fcdl_main_container {
+        display: flex;
+        margin: 15px 0 15px 0;
+    }
+    .fcdl_settings_container {
+        display: flex;
+        gap: 1px;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    .fcdl_radio_input {
+        cursor: pointer;
+    }
+    .fcdl_progress_container {
+        padding-left: 15px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 15px;
+        font-family: arial, helvetica, sans-serif;
+        color: white;
+        font-size: 14px;
+    }
+    .fcdl_progress_bar {
+        width: 200px;
+        height: 8px;
+        background: #333;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .fcdl_progress_fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4CAF50, #45a049);
+        width: 0%;
+        transition: width 0.3s ease;
+        border-radius: 4px;
+    }
     `;
 
     GM_addStyle(fcdl_css);
@@ -75,16 +127,7 @@
             postInfos.forEach((postInfo, index) => {
                 const button = document.createElement("button");
                 button.title = "Download All as ZIP from this post down";
-                button.style.cssText = `
-                    padding: 0 0 0 3px;
-                    margin: 0;
-                    background: transparent;
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    opacity: 0.3;
-                    float: right;
-                `;
+                button.className = "fcdl_post_button";
 
                 const img = document.createElement("img")
                 img.src = userscript_icon;
@@ -115,40 +158,20 @@
         span.innerHTML = "Download All As Zip";
         button.appendChild(span);
 
-        // Hover effect
-        button.addEventListener('mouseenter', () => {
-            button.style.background = '#4a7c21';
-            button.style.transform = 'translateY(-2px)';
-            button.style.boxShadow = '0 6px 20px rgba(0,0,0,0.4)';
-        });
-
-        button.addEventListener('mouseleave', () => {
-            button.style.background = '#2d5016';
-            button.style.transform = 'translateY(0)';
-            button.style.boxShadow = '0 4px 15px rgba(0,0,0,0.3)';
-        });
-
         return button;
     }
 
     function createSettings() {
 
         const container = document.createElement('div');
-        container.style.cssText = `
-            display: flex;
-            gap: 1px;
-            justify-content: flex-end;
-            align-items: center;
-        `;
+        container.className = "fcdl_settings_container";
 
         const originalNamesInput = document.createElement('input');
         originalNamesInput.type = 'radio';
         originalNamesInput.id = 'radioOriginalNames';
         originalNamesInput.name = 'filenameOption';
         originalNamesInput.checked = config.useOriginalNames;
-        originalNamesInput.style.cssText = `
-            cursor: pointer;
-        `;
+        originalNamesInput.className = "fcdl_radio_input";
         originalNamesInput.title = 'Use the original filenames from the posts.';
         originalNamesInput.addEventListener('change', () => {
             if (originalNamesInput.checked) {
@@ -166,9 +189,7 @@
         postIdsInput.id = 'radioPostIds';
         postIdsInput.name = 'filenameOption';
         postIdsInput.checked = config.usePostIds;
-        postIdsInput.style.cssText = `
-            cursor: pointer;
-        `;
+        postIdsInput.className = "fcdl_radio_input";
         postIdsInput.title = 'Use post IDs as filenames.';
         postIdsInput.addEventListener('change', () => {
             if (postIdsInput.checked) {
@@ -186,9 +207,7 @@
         combineNamesInput.id = 'radioCombineNames';
         combineNamesInput.name = 'filenameOption';
         combineNamesInput.checked = config.combineNames;
-        combineNamesInput.style.cssText = `
-            cursor: pointer;
-        `;
+        combineNamesInput.className = "fcdl_radio_input";
         combineNamesInput.title = 'Combine post IDs and original filenames.';
         combineNamesInput.addEventListener('change', () => {
             if (combineNamesInput.checked) {
@@ -210,49 +229,24 @@
 
     function createProgressIndicator() {
         const progressContainer = document.createElement('div');
-        progressContainer.style.cssText = `
-            padding-left: 15px;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 15px;
-            font-family: arial, helvetica, sans-serif;
-            color: white;
-            font-size: 14px;
-        `;
+        progressContainer.className = "fcdl_progress_container";
 
         const bodyColor = getComputedStyle(document.body).color;
 
         const progressText = document.createElement('div');
         progressText.id = 'zip-progress-text';
-        progressText.style.cssText = `
-        `;
         progressText.textContent = 'Preparing download...';
         progressText.style.color = bodyColor;
 
         const progressBar = document.createElement('div');
-        progressBar.style.cssText = `
-            width: 200px;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
-            overflow: hidden;
-        `;
+        progressBar.className = "fcdl_progress_bar";
 
         const progressFill = document.createElement('div');
         progressFill.id = 'zip-progress-fill';
-        progressFill.style.cssText = `
-            height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #45a049);
-            width: 0%;
-            transition: width 0.3s ease;
-            border-radius: 4px;
-        `;
+        progressFill.className = "fcdl_progress_fill";
 
         const progressPercent = document.createElement('div');
         progressPercent.id = 'zip-progress-percent';
-        progressPercent.style.cssText = `
-        `;
         progressPercent.textContent = '0%';
         progressPercent.style.color = bodyColor;
 
@@ -525,10 +519,7 @@
             try {
                 const containerDiv = document.createElement('div');
                 containerDiv.id = "4chan_dl_cont";
-                containerDiv.style.cssText = `
-                    display: flex;
-                    margin: 15px 0 15px 0;
-                `;
+                containerDiv.className = "fcdl_main_container";
 
                 const settingsContainer = createSettings();
                 const downloadButton = createDownloadButton();
@@ -560,4 +551,3 @@
     init();
 
 })();
-
