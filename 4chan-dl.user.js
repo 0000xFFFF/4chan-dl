@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.2.1
+// @version      1.2.2
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
@@ -12,8 +12,39 @@
 // @downloadURL  https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
 // @updateURL    https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
 // ==/UserScript==
+
+
+function GM_addStyle(css) {
+    const style = document.createElement("style");
+    style.textContent = css;
+    (document.head || document.documentElement).appendChild(style);
+    return style;
+}
+
+const fcdl_css = `
+.fcdl_button_regular {
+    padding: 12px 18px;
+    display: flex;
+    gap: 5px;
+    background: #2d5016;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+`;
+
+GM_addStyle(fcdl_css);
+
 (function() {
     'use strict';
+
+    const userscript_icon = "data:image/ico;base64,AAABAAEADg8AAAEAIAC4AAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAOAAAADwgGAAAA1BT+dAAAAH9JREFUeJxjYMAE/3FgguB/2hljFIxPI4rpODRi2I6hCJtGXC4gWiP1bCTLj2Ro/M+gcs5QFJcGXAZonTKVAFtJjGYMTTDALMhC0KkswqwYCQGsIBFJEbqmRBypCK4wEUtgJOBJfijxhexskPOQ5dA1MiAJgGm9i3piIIxNDgQAf5IV/0loTT0AAAAASUVORK5CYII=";
 
     function loadSetting(name, def) {
         const raw = localStorage.getItem(name);
@@ -43,8 +74,7 @@
             const postInfos = postContainer.querySelectorAll(".postInfo");
             postInfos.forEach((postInfo, index) => {
                 const button = document.createElement("button");
-                button.innerHTML = '⬇️📦';
-                button.title = "📦 Download All as ZIP from this post down";
+                button.title = "Download All as ZIP from this post down";
                 button.style.cssText = `
                     padding: 0 0 0 3px;
                     margin: 0;
@@ -55,6 +85,10 @@
                     opacity: 0.3;
                     float: right;
                 `;
+
+                const img = document.createElement("img")
+                img.src = userscript_icon;
+                button.appendChild(img);
 
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -71,20 +105,15 @@
     function createDownloadButton() {
         const button = document.createElement('button');
         button.id = "4chan_dl_button";
-        button.innerHTML = '📦 Download All as ZIP';
-        button.style.cssText = `
-            padding: 12px 18px;
-            background: #2d5016;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        `;
+        button.className = "fcdl_button_regular";
+
+        const img = document.createElement("img");
+        img.src = userscript_icon;
+        button.appendChild(img);
+
+        const span = document.createElement("span");
+        span.innerHTML = "Download All As Zip";
+        button.appendChild(span);
 
         // Hover effect
         button.addEventListener('mouseenter', () => {
@@ -518,7 +547,7 @@
                 const mediaLinks = findMediaLinks();
                 console.log(`Found ${mediaLinks.length} media files on page:`, mediaLinks);
 
-                document.getElementById("4chan_dl_button").innerHTML = `📦 Download All (${mediaLinks.length}) as ZIP`;
+                document.getElementById("4chan_dl_button").title = `Download All (${mediaLinks.length}) as ZIP`;
 
                 createDownloadButtons();
 

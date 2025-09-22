@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-labelledby="title-desc3">
+  <title id="title-desc3">Download</title>
+  <desc>Circle button with a download arrow</desc>
+  <circle cx="8" cy="8" r="8" fill="green"/>
+  <path d="M 8 4 v 7
+           M 4 7
+           l 4 4 
+           l 4 -4
+           M 5 13 h 7" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.1"/>
+</svg>
