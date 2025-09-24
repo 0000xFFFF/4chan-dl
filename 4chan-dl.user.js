@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.3.1
+// @version      1.3.2
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
@@ -207,6 +207,7 @@
         const labelEl = document.createElement("label");
         labelEl.className = "fcdl_radio_label";
         labelEl.setAttribute("for", id);
+        labelEl.title = title;
 
         // Create input
         const input = document.createElement("input");
@@ -230,8 +231,10 @@
         const span = document.createElement("span");
         span.className = "fcdl_radio_span";
 
+
         // Visible text
         const textNode = document.createTextNode(label);
+        textNode.title = title;
 
         // Assemble
         labelEl.appendChild(input);
@@ -281,7 +284,7 @@
             id: "radioCombineNames",
             name: "filenameOption",
             label: "Combine",
-            title: "Combine post IDs and original filenames.",
+            title: "Combine post IDs and original filenames. ({id}_{postname}.ext)",
             checked: config.combineNames,
             onChange: () => {
                 saveSetting("useOriginalNames", false);
