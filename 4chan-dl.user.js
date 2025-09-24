@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.2.3
+// @version      1.3
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
@@ -58,15 +58,49 @@
     .fcdl_main_container {
         display: flex;
         margin: 15px 0 15px 0;
+        gap: 10px;
     }
     .fcdl_settings_container {
         display: flex;
-        gap: 1px;
+        gap: 10px;
         justify-content: flex-end;
         align-items: center;
     }
+    .fcdl_radio_label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        overflow: hidden;
+    }
     .fcdl_radio_input {
         cursor: pointer;
+        accent-color: rgb(102, 204, 51);
+        background-color black;
+        display: none;
+    }
+    .fcdl_radio_span {
+        height: 15px;
+        width: 15px;
+        border: 1px solid #555;
+        border-radius: 50%;
+        display: inline-block;
+        position: relative;
+        cursor: pointer;
+    }
+    .fcdl_radio_input:checked + .fcdl_radio_span {
+        background-color: green;
+        border-color: #4CAF50;
+    }
+    .fcdl_radio_input:checked + .fcdl_radio_span::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 9px;
+        height: 9px;
+        background: lime;
+        border-radius: 100%;
     }
     .fcdl_progress_container {
         padding-left: 15px;
@@ -161,20 +195,63 @@
         return button;
     }
 
-    function createSettings() {
+    function createRadioButton({
+        id,
+        name,
+        label,
+        title,
+        checked = false,
+        onChange
+    }) {
+        // Create label wrapper
+        const labelEl = document.createElement("label");
+        labelEl.className = "fcdl_radio_label";
+        labelEl.setAttribute("for", id);
 
-        const container = document.createElement('div');
+        // Create input
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.id = id;
+        input.name = name;
+        input.checked = checked;
+        input.className = "fcdl_radio_input";
+        input.title = title;
+
+        // Hook event listener
+        if (typeof onChange === "function") {
+            input.addEventListener("change", () => {
+                if (input.checked) {
+                    onChange();
+                }
+            });
+        }
+
+        // Custom span for styling
+        const span = document.createElement("span");
+        span.className = "fcdl_radio_span";
+
+        // Visible text
+        const textNode = document.createTextNode(label);
+
+        // Assemble
+        labelEl.appendChild(input);
+        labelEl.appendChild(span);
+        labelEl.appendChild(textNode);
+
+        return labelEl;
+    }
+
+    function createSettings() {
+        const container = document.createElement("div");
         container.className = "fcdl_settings_container";
 
-        const originalNamesInput = document.createElement('input');
-        originalNamesInput.type = 'radio';
-        originalNamesInput.id = 'radioOriginalNames';
-        originalNamesInput.name = 'filenameOption';
-        originalNamesInput.checked = config.useOriginalNames;
-        originalNamesInput.className = "fcdl_radio_input";
-        originalNamesInput.title = 'Use the original filenames from the posts.';
-        originalNamesInput.addEventListener('change', () => {
-            if (originalNamesInput.checked) {
+        container.appendChild(createRadioButton({
+            id: "radioOriginalNames",
+            name: "filenameOption",
+            label: "Original Names",
+            title: "Use the original filenames from the posts.",
+            checked: config.useOriginalNames,
+            onChange: () => {
                 saveSetting("useOriginalNames", true);
                 saveSetting("usePostIds", false);
                 saveSetting("combineNames", false);
@@ -182,17 +259,15 @@
                 config.usePostIds = false;
                 config.combineNames = false;
             }
-        });
+        }));
 
-        const postIdsInput = document.createElement('input');
-        postIdsInput.type = 'radio';
-        postIdsInput.id = 'radioPostIds';
-        postIdsInput.name = 'filenameOption';
-        postIdsInput.checked = config.usePostIds;
-        postIdsInput.className = "fcdl_radio_input";
-        postIdsInput.title = 'Use post IDs as filenames.';
-        postIdsInput.addEventListener('change', () => {
-            if (postIdsInput.checked) {
+        container.appendChild(createRadioButton({
+            id: "radioPostIds",
+            name: "filenameOption",
+            label: "Post IDs",
+            title: "Use post IDs as filenames.",
+            checked: config.usePostIds,
+            onChange: () => {
                 saveSetting("useOriginalNames", false);
                 saveSetting("usePostIds", true);
                 saveSetting("combineNames", false);
@@ -200,17 +275,15 @@
                 config.usePostIds = true;
                 config.combineNames = false;
             }
-        });
+        }));
 
-        const combineNamesInput = document.createElement('input');
-        combineNamesInput.type = 'radio';
-        combineNamesInput.id = 'radioCombineNames';
-        combineNamesInput.name = 'filenameOption';
-        combineNamesInput.checked = config.combineNames;
-        combineNamesInput.className = "fcdl_radio_input";
-        combineNamesInput.title = 'Combine post IDs and original filenames.';
-        combineNamesInput.addEventListener('change', () => {
-            if (combineNamesInput.checked) {
+        container.appendChild(createRadioButton({
+            id: "radioCombineNames",
+            name: "filenameOption",
+            label: "Combine",
+            title: "Combine post IDs and original filenames.",
+            checked: config.combineNames,
+            onChange: () => {
                 saveSetting("useOriginalNames", false);
                 saveSetting("usePostIds", false);
                 saveSetting("combineNames", true);
@@ -218,11 +291,7 @@
                 config.usePostIds = false;
                 config.combineNames = true;
             }
-        });
-
-        container.appendChild(originalNamesInput);
-        container.appendChild(postIdsInput);
-        container.appendChild(combineNamesInput);
+        }));
 
         return container;
     }
