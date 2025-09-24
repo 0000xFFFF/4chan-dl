@@ -8,7 +8,7 @@ If the thread has multiple files with the same posted filename the files will be
 
 ### Adds buttons that lets you download all the content from a thread in a zip file.
 
-<img src="preview/preview.png" width="772" height="386">
+<img src="preview/preview.png" width="597" height="261">
 
 ### Also on each post there will be a button to start downloading from that post down.
 
@@ -17,6 +17,8 @@ If the thread has multiple files with the same posted filename the files will be
 ### [<img src="preview/4chan-dl.ico" width="16" height="16"> Click here to install <img src="preview/4chan-dl.ico" width="16" height="16">](https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js)
 
 #### note: if you're using [4chan-x](https://github.com/ccd0/4chan-x), the script should still work
+
+---
 
 
 ## Python version

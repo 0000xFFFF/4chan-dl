@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.2.2
+// @version      1.2.3
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
