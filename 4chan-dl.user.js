@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.3
+// @version      1.3.1
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @match        *://boards.4chan.org/*/thread/*
@@ -297,6 +297,9 @@
     }
 
     function createProgressIndicator() {
+
+        document.querySelectorAll(".fcdl_progress_container").forEach((item, index) => { item.remove(); } );
+
         const progressContainer = document.createElement('div');
         progressContainer.className = "fcdl_progress_container";
 
