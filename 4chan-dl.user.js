@@ -4,6 +4,7 @@
 // @version      1.3.2
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
+// @license      MIT
 // @match        *://boards.4chan.org/*/thread/*
 // @match        *://boards.4channel.org/*/thread/*
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
