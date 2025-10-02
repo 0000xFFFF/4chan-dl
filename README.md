@@ -27,7 +27,7 @@ If the thread has multiple files with the same posted filename the files will be
 
 ### Setup virtual environment & install - before running anything
 ```sh
-./setup-env.sh
+./setup-venv.sh
 ./install.sh
 ```
 
