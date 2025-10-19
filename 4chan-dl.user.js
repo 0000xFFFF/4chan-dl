@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      1.3.2
+// @version      2.0.0
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @license      MIT
@@ -127,6 +127,11 @@
         transition: width 0.3s ease;
         border-radius: 4px;
     }
+    .fcdl_progress_status {
+        display: flex;
+        align-items: center;
+        padding-left: 3px;
+    }
     `;
 
     GM_addStyle(fcdl_css);
@@ -146,9 +151,7 @@
     }
 
     const config = {
-        useOriginalNames: loadSetting("useOriginalNames", true),
-        usePostIds: loadSetting("usePostIds", false),
-        combineNames: loadSetting("combineNames", false),
+        saveMode: loadSetting("FCDL_SAVE_MODE", 0), // 1 == useOriginalNames, 2 == usePostIds, 3 == combineNames
         maxConcurrentDownloads: loadSetting("maxConcurrentDownloads", 5)
     };
 
@@ -156,7 +159,6 @@
         const postContainers = document.querySelectorAll(".postContainer");
 
         postContainers.forEach((postContainer, index) => {
-
 
             const postInfos = postContainer.querySelectorAll(".postInfo");
             postInfos.forEach((postInfo, index) => {
@@ -254,14 +256,10 @@
             name: "filenameOption",
             label: "Original Names",
             title: "Use the original filenames from the posts.",
-            checked: config.useOriginalNames,
+            checked: config.saveMode == 0,
             onChange: () => {
-                saveSetting("useOriginalNames", true);
-                saveSetting("usePostIds", false);
-                saveSetting("combineNames", false);
-                config.useOriginalNames = true;
-                config.usePostIds = false;
-                config.combineNames = false;
+                saveSetting("FCDL_SAVE_MODE", 0);
+                config.saveMode = 0;
             }
         }));
 
@@ -270,14 +268,10 @@
             name: "filenameOption",
             label: "Post IDs",
             title: "Use post IDs as filenames.",
-            checked: config.usePostIds,
+            checked: config.saveMode == 1,
             onChange: () => {
-                saveSetting("useOriginalNames", false);
-                saveSetting("usePostIds", true);
-                saveSetting("combineNames", false);
-                config.useOriginalNames = false;
-                config.usePostIds = true;
-                config.combineNames = false;
+                saveSetting("FCDL_SAVE_MODE", 1);
+                config.saveMode = 1;
             }
         }));
 
@@ -286,14 +280,10 @@
             name: "filenameOption",
             label: "Combine",
             title: "Combine post IDs and original filenames. ({id}_{postname}.ext)",
-            checked: config.combineNames,
+            checked: config.saveMode == 2,
             onChange: () => {
-                saveSetting("useOriginalNames", false);
-                saveSetting("usePostIds", false);
-                saveSetting("combineNames", true);
-                config.useOriginalNames = false;
-                config.usePostIds = false;
-                config.combineNames = true;
+                saveSetting("FCDL_SAVE_MODE", 2);
+                config.saveMode = 2;
             }
         }));
 
@@ -419,13 +409,15 @@
     function generateFilename(imageData) {
         let filename;
 
-        if (config.usePostIds) {
-            filename = imageData.postId;
-        } else if (config.combineNames) {
+        switch (config.saveMode) {
+          default:
+          case 0: filename = imageData.originalName; break;
+          case 1: filename = imageData.postId; break;
+          case 2: {
             const postIdBase = imageData.postId.split('.')[0];
             filename = `${postIdBase}_${imageData.originalName}`;
-        } else {
-            filename = imageData.originalName;
+            break;
+          }
         }
 
         filename = filename.replace(/[<>:"/\\|?*]/g, '_');
@@ -562,9 +554,6 @@
             setTimeout(() => URL.revokeObjectURL(downloadLink.href), 5000);
 
             setTimeout(() => {
-                //progressIndicator.style.display = 'none';
-                //container.removeChild(progressIndicator);
-
                 const sizeInMB = (zipBlob.size / (1024 * 1024)).toFixed(2);
                 const message = `✅ ZIP Download Complete!\n\n` +
                     `📁 File: ${zipFilename}\n` +
@@ -573,13 +562,24 @@
                     `❌ Failed: ${imageLinks.length - successful}\n` +
                     `💾 ZIP size: ${sizeInMB} MB`;
 
-                alert(message);
+                //alert(message);
+
+                if (progressIndicator) {
+                    progressIndicator.remove();
+                }
+
+                document.querySelectorAll(".fcdl_progress_status").forEach((item, index) => { item.remove(); } );
+
+                const statusDiv = document.createElement("div");
+                statusDiv.className = "fcdl_progress_status";
+                statusDiv.innerHTML = `${successful} / ${imageLinks.length} (${sizeInMB} MB)`;
+                container.appendChild(statusDiv);
+
                 console.log(message);
             }, 1000);
 
         } catch (error) {
             console.error('Error creating ZIP:', error);
-            progressIndicator.style.display = 'none';
             document.body.removeChild(progressIndicator);
             alert(`❌ Error creating ZIP file:\n${error.message}`);
         }
