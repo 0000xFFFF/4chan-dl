@@ -6,7 +6,15 @@ If the thread has multiple files with the same posted filename the files will be
 
 ## UserScript ([Violent Monkey](https://violentmonkey.github.io/get-it/), ...)
 
-### Adds buttons that lets you download all the content from a thread in a zip file.
+### Adds buttons that lets you download all the content from a thread.
+
+# UPDATE: ZIPPING IS BROKEN
+
+* YOU'LL NEED TO MANUALLY SET THE DOWNLOAD DIR IN BROWSER SETTINGS FOR EACH THREAD, I KNOW, I HATE MV3.
+  * Firefox: ```about:preferences#downloads```
+  * Brave: ```brave://settings/downloads```
+* Set the dir to your custom location.
+* Also uncheck **"Ask where to save file"**
 
 <img src="preview/preview.png">
 
