@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      3.0.1
+// @version      3.0.2
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @license      MIT
@@ -161,8 +161,14 @@
 
         postContainers.forEach((postContainer, index) => {
 
+            const post = postContainer.querySelector(".post");
+
             const postInfos = postContainer.querySelectorAll(".postInfo");
             postInfos.forEach((postInfo, index) => {
+
+                const m = post.querySelectorAll('div.file');
+                if (m.length == 0) { return; }
+
                 const button = document.createElement("button");
                 button.title = "Download All from this post down";
                 button.className = "fcdl_post_button";
@@ -780,4 +786,3 @@
     init();
 
 })();
-
