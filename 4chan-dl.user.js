@@ -152,7 +152,7 @@
 
     const config = {
         saveMode: loadSetting("FCDL_SAVE_MODE", 0), // 1 == useOriginalNames, 2 == usePostIds, 3 == combineNames
-        maxConcurrentDownloads: loadSetting("maxConcurrentDownloads", 5)
+        maxConcurrentDownloads: loadSetting("FCDL_MAX_CONCURRENT_DOWNLOADS", 2)
     };
 
     function createDownloadButtons() {
@@ -292,7 +292,7 @@
 
     function createProgressIndicator() {
 
-        document.querySelectorAll(".fcdl_progress_container").forEach((item, index) => { item.remove(); } );
+        document.querySelectorAll(".fcdl_progress_container").forEach((item, index) => { item.remove(); });
 
         const progressContainer = document.createElement('div');
         progressContainer.className = "fcdl_progress_container";
@@ -410,14 +410,14 @@
         let filename;
 
         switch (config.saveMode) {
-          default:
-          case 0: filename = imageData.originalName; break;
-          case 1: filename = imageData.postId; break;
-          case 2: {
-            const postIdBase = imageData.postId.split('.')[0];
-            filename = `${postIdBase}_${imageData.originalName}`;
-            break;
-          }
+            default:
+            case 0: filename = imageData.originalName; break;
+            case 1: filename = imageData.postId; break;
+            case 2: {
+                const postIdBase = imageData.postId.split('.')[0];
+                filename = `${postIdBase}_${imageData.originalName}`;
+                break;
+            }
         }
 
         filename = filename.replace(/[<>:"/\\|?*]/g, '_');
@@ -460,7 +460,7 @@
         container.appendChild(progressIndicator);
         progressIndicator.style.display = 'flex';
 
-        console.log(`Found ${imageLinks.length} images to download`);
+        console.log(`[fcdl] Found ${imageLinks.length} images to download`);
 
         const zip = new JSZip();
         const downloadedFilenames = new Set();
@@ -498,10 +498,10 @@
                 const blob = await response.blob();
                 zip.file(filename, blob);
                 successful++;
-                console.log(`✓ Added to ZIP: ${filename}`);
+                console.log(`[fcdl] ✓ Added to ZIP: ${filename}`);
                 return { success: true, filename };
             } catch (error) {
-                console.error(`✗ Failed to download ${imageData.url}:`, error);
+                console.error(`[fcdl] ✗ Failed to download ${imageData.url}:`, error);
                 return { success: false, filename, error: error.message };
             } finally {
                 completed++;
@@ -568,18 +568,18 @@
                     progressIndicator.remove();
                 }
 
-                document.querySelectorAll(".fcdl_progress_status").forEach((item, index) => { item.remove(); } );
+                document.querySelectorAll(".fcdl_progress_status").forEach((item, index) => { item.remove(); });
 
                 const statusDiv = document.createElement("div");
                 statusDiv.className = "fcdl_progress_status";
                 statusDiv.innerHTML = `${successful} / ${imageLinks.length} (${sizeInMB} MB)`;
                 container.appendChild(statusDiv);
 
-                console.log(message);
+                console.log(`[fcdl] ${message}`);
             }, 1000);
 
         } catch (error) {
-            console.error('Error creating ZIP:', error);
+            console.error('[fcdl] Error creating ZIP:', error);
             document.body.removeChild(progressIndicator);
             alert(`❌ Error creating ZIP file:\n${error.message}`);
         }
@@ -612,14 +612,14 @@
                 threadElement.parentElement.insertBefore(containerDiv, threadElement);
 
                 const mediaLinks = findMediaLinks();
-                console.log(`Found ${mediaLinks.length} media files on page:`, mediaLinks);
+                console.log(`[fcdl] Found ${mediaLinks.length} media files on page:`, mediaLinks);
 
                 document.getElementById("4chan_dl_button").title = `Download All (${mediaLinks.length}) as ZIP`;
 
                 createDownloadButtons();
 
             } catch (error) {
-                console.error('Error initializing userscript:', error);
+                console.error('[fcdl] Error initializing userscript:', error);
             }
         }, 500);
     }
