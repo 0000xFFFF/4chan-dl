@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      2.0.0
+// @version      3.0.1
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @license      MIT
 // @match        *://boards.4chan.org/*/thread/*
 // @match        *://boards.4channel.org/*/thread/*
-// @require      https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        GM_download
+// @connect      *
 // @icon         data:image/ico;base64,AAABAAEAEBAAAAEAIAC+AAAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAQAAAAEAgGAAAAH/P/YQAAAIVJREFUeJxjYMAO/uPARIP/aWeMUTAxBqDYhsMAnK7BUIzNAEIuItoA2rmArDBQOWcoikWSGAP+a50ylcAwBF0jLoPgmrG5hGTNMMAsyELQCyzCrDgTFFhhIpJidM2JBFIlXEMilkBLICJZo8Q3sndAzkaWw2UAA5IEmNa7qCcGwtjkqAYAtUIYeAqEFoUAAAAASUVORK5CYII=
 // @downloadURL  https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
 // @updateURL    https://github.com/0000xFFFF/4chan-dl/raw/refs/heads/master/4chan-dl.user.js
@@ -152,7 +153,7 @@
 
     const config = {
         saveMode: loadSetting("FCDL_SAVE_MODE", 0), // 1 == useOriginalNames, 2 == usePostIds, 3 == combineNames
-        maxConcurrentDownloads: loadSetting("FCDL_MAX_CONCURRENT_DOWNLOADS", 2)
+        maxConcurrentDownloads: loadSetting("FCDL_MAX_CONCURRENT_DOWNLOADS", 1)
     };
 
     function createDownloadButtons() {
@@ -163,7 +164,7 @@
             const postInfos = postContainer.querySelectorAll(".postInfo");
             postInfos.forEach((postInfo, index) => {
                 const button = document.createElement("button");
-                button.title = "Download All as ZIP from this post down";
+                button.title = "Download All from this post down";
                 button.className = "fcdl_post_button";
 
                 const img = document.createElement("img")
@@ -192,7 +193,7 @@
         button.appendChild(img);
 
         const span = document.createElement("span");
-        span.innerHTML = "Download All As Zip";
+        span.innerHTML = "Download All";
         button.appendChild(span);
 
         return button;
@@ -420,7 +421,16 @@
             }
         }
 
-        filename = filename.replace(/[<>:"/\\|?*]/g, '_');
+        // Comprehensive filename sanitization
+        filename = filename.replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');  // Remove illegal chars
+        filename = filename.replace(/^\s+|\s+$/g, '');               // Trim whitespace
+        filename = filename.replace(/\s+/g, '_');                    // Replace spaces with underscore
+        filename = filename.replace(/\.+/g, '.');                    // Remove multiple dots
+
+        // Ensure filename isn't empty
+        if (!filename) {
+            filename = 'download';
+        }
 
         return filename;
     }
@@ -447,6 +457,120 @@
         }
     }
 
+    async function fetchBinary(url) {
+        if (typeof GM_xmlhttpRequest === 'function') {
+            return await new Promise((resolve, reject) => {
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: url,
+                    responseType: 'arraybuffer',
+                    timeout: 30000,
+                    onload: (response) => {
+                        if (response.status >= 200 && response.status < 300) {
+                            resolve(response.response);
+                            return;
+                        }
+                        reject(new Error(`HTTP ${response.status} - ${response.statusText}`));
+                    },
+                    onerror: () => reject(new Error('Network error while downloading media')),
+                    ontimeout: () => reject(new Error('Download timed out')),
+                    onabort: () => reject(new Error('Download aborted'))
+                });
+            });
+        }
+
+        const response = await fetch(url, { mode: 'cors' });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status} - ${response.statusText}`);
+        }
+
+        return await response.arrayBuffer();
+    }
+
+    function triggerZipDownload(zipBlob, zipFilename) {
+        const zipUrl = URL.createObjectURL(zipBlob);
+
+        if (typeof GM_download === 'function') {
+            GM_download({
+                url: zipUrl,
+                name: zipFilename,
+                saveAs: true,
+                onerror: () => {
+                    console.error('[fcdl] GM_download failed for ZIP file');
+                },
+                onload: () => {
+                    setTimeout(() => URL.revokeObjectURL(zipUrl), 5000);
+                }
+            });
+            return;
+        }
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = zipUrl;
+        downloadLink.download = zipFilename;
+        downloadLink.style.display = 'none';
+
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 5000);
+    }
+
+    async function downloadFilesIndividually(imageLinks) {
+        let successful = 0;
+        let failed = 0;
+
+        for (const imageData of imageLinks) {
+            const filename = generateFilename(imageData);
+            const url = imageData.url;
+
+            console.log(`[fcdl] Starting download: ${filename}`);
+
+            if (typeof GM_download === 'function') {
+                GM_download({
+                    url: url,
+                    name: filename,
+                    saveAs: false,
+                    onerror: (error) => {
+                        failed++;
+                        console.error(`[fcdl] ✗ Failed to download: ${filename}`);
+                        console.error(`[fcdl]   URL: ${url}`);
+                        console.error(`[fcdl]   Error: ${error}`);
+                    },
+                    onload: () => {
+                        successful++;
+                        console.log(`[fcdl] ✓ Successfully downloaded: ${filename}`);
+                    },
+                    ontimeout: () => {
+                        failed++;
+                        console.error(`[fcdl] ✗ Download timed out: ${filename} from ${url}`);
+                    }
+                });
+                continue;
+            }
+
+            try {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = filename;
+                downloadLink.style.display = 'none';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                successful++;
+                console.log(`[fcdl] ✓ Successfully downloaded: ${filename}`);
+            } catch (error) {
+                failed++;
+                console.error(`[fcdl] ✗ Failed to download: ${filename} - Error: ${error.message}`);
+            }
+        }
+
+        // Summary log
+        setTimeout(() => {
+            console.log(`[fcdl] Download Summary: ${successful} successful, ${failed} failed out of ${imageLinks.length} files`);
+        }, 1000);
+    }
+
     async function downloadAllImagesAsZip(startFromThisPostId = "") {
         const imageLinks = findMediaLinks(startFromThisPostId);
 
@@ -455,6 +579,29 @@
             return;
         }
 
+        // Extract thread ID from URL
+        const threadId = window.location.pathname.split('/').pop() || 'thread';
+        const suggestedPath = `Downloads_${threadId}`;
+
+        // Combined dialog: Instructions + confirmation
+        const userConfirmed = confirm(
+            `ZIPPING CURRENTLY BROKEN, Please set the download directory manually (e.g. ${suggestedPath})\n` +
+            `IMPORTANT: Uncheck "Ask where to save file" in your download settings, so you don't get spammed with dialog boxes.\n` +
+            `Firefox: about:preferences#downloads\n` +
+            `Brave: brave://settings/downloads\n` +
+            `Ready to start downloading (${imageLinks.length} files)?`,
+            ""
+        );
+
+        if (!userConfirmed) {
+            return;
+        }
+
+        // ZIP creation disabled - using individual downloads instead
+        await downloadFilesIndividually(imageLinks);
+        return;
+
+        /* ZIP CREATION CODE DISABLED - NOT WORKING
         const container = document.getElementById("4chan_dl_cont");
         const progressIndicator = createProgressIndicator();
         container.appendChild(progressIndicator);
@@ -490,13 +637,8 @@
 
             try {
                 updateProgress(completed + 1, imageLinks.length, 'Downloading', filename);
-                const response = await fetch(imageData.url);
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status} - ${response.statusText}`);
-                }
-
-                const blob = await response.blob();
-                zip.file(filename, blob);
+                const arrayBuffer = await fetchBinary(imageData.url);
+                zip.file(filename, arrayBuffer);
                 successful++;
                 console.log(`[fcdl] ✓ Added to ZIP: ${filename}`);
                 return { success: true, filename };
@@ -527,13 +669,34 @@
             completed = imageLinks.length;
             updateProgress(completed, imageLinks.length, 'Creating ZIP file', '');
 
-            const zipBlob = await zip.generateAsync({
-                type: "blob",
-                compression: "DEFLATE",
-                compressionOptions: {
-                    level: 6
+            let zipBlob;
+            try {
+                zipBlob = await Promise.race([
+                    zip.generateAsync({
+                        type: "blob",
+                        compression: "STORE"
+                    }),
+                    new Promise((_, reject) => {
+                        setTimeout(() => {
+                            reject(new Error('ZIP creation timed out after 25 seconds; falling back to individual downloads.'));
+                        }, 25000);
+                    })
+                ]);
+            } catch (zipError) {
+                console.warn('[fcdl] ZIP creation stalled, falling back to individual downloads:', zipError);
+                updateProgress(completed, imageLinks.length, 'Fallback download', '');
+                await downloadFilesIndividually(imageLinks);
+
+                if (progressIndicator) {
+                    progressIndicator.remove();
                 }
-            });
+
+                const statusDiv = document.createElement("div");
+                statusDiv.className = "fcdl_progress_status";
+                statusDiv.innerHTML = `${successful} / ${imageLinks.length} (individual files)`;
+                container.appendChild(statusDiv);
+                return;
+            }
 
             const now = new Date();
             const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
@@ -542,27 +705,16 @@
 
             updateProgress(completed, imageLinks.length, 'Downloading ZIP', zipFilename);
 
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(zipBlob);
-            downloadLink.download = zipFilename;
-            downloadLink.style.display = 'none';
+            triggerZipDownload(zipBlob, zipFilename);
 
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-
-            setTimeout(() => URL.revokeObjectURL(downloadLink.href), 5000);
-
+            const sizeInMB = (zipBlob.size / (1024 * 1024)).toFixed(2);
             setTimeout(() => {
-                const sizeInMB = (zipBlob.size / (1024 * 1024)).toFixed(2);
                 const message = `✅ ZIP Download Complete!\n\n` +
                     `📁 File: ${zipFilename}\n` +
                     `📊 Total images: ${imageLinks.length}\n` +
                     `✅ Successful: ${successful}\n` +
                     `❌ Failed: ${imageLinks.length - successful}\n` +
                     `💾 ZIP size: ${sizeInMB} MB`;
-
-                //alert(message);
 
                 if (progressIndicator) {
                     progressIndicator.remove();
@@ -583,6 +735,7 @@
             document.body.removeChild(progressIndicator);
             alert(`❌ Error creating ZIP file:\n${error.message}`);
         }
+        */
     }
 
     async function init() {
@@ -614,7 +767,7 @@
                 const mediaLinks = findMediaLinks();
                 console.log(`[fcdl] Found ${mediaLinks.length} media files on page:`, mediaLinks);
 
-                document.getElementById("4chan_dl_button").title = `Download All (${mediaLinks.length}) as ZIP`;
+                document.getElementById("4chan_dl_button").title = `Download All (${mediaLinks.length})`;
 
                 createDownloadButtons();
 
@@ -627,3 +780,4 @@
     init();
 
 })();
+
