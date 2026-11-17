@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Prepare release
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          mkdir -p release-files
+          cp 4chan-dl.user.js release-files/4chan-dl.user.js
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: release-files/4chan-dl.user.js
+          generate_release_notes: true
+

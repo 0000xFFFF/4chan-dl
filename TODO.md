@@ -1,0 +1,2 @@
+- rewrite project in rust ditch python
+- make cargo build release
