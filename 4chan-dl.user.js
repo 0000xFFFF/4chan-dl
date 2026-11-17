@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      3.1.0
+// @version      3.2.0
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @license      MIT
@@ -555,7 +555,17 @@
         return filename;
     }
 
-    function updateProgress(current, total, status = '', filename = '') {
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+    }
+
+
+    function updateProgress(current, total, status = '', filename = '', bytesDownloaded = 0) {
         const progressText = document.getElementById('zip-progress-text');
         const progressFill = document.getElementById('zip-progress-fill');
         const progressPercent = document.getElementById('zip-progress-percent');
@@ -564,11 +574,8 @@
             const percentage = Math.round((current / total) * 100);
 
             let displayText = status;
-            if (filename) {
-                displayText += ` - ${filename}`;
-            }
             if (current <= total) {
-                displayText = `${status} (${current}/${total})` + (filename ? ` - ${filename}` : '');
+                displayText = `${status} (${current}/${total})` + (bytesDownloaded > 0 ? ` [${formatBytes(bytesDownloaded)}]` : "") + (filename ? ` - ${filename}` : '');
             }
 
             progressText.textContent = displayText;
@@ -717,6 +724,7 @@
         let completed = 0;
         let successful = 0;
         let zipError = null;
+        let totalBytesDownloaded = 0;
 
         updateProgress(0, imageLinks.length, 'Initializing', '');
 
@@ -740,23 +748,22 @@
             downloadedFilenames.add(filename);
 
             try {
-                updateProgress(completed + 1, imageLinks.length, 'Downloading', filename);
+                updateProgress(completed + 1, imageLinks.length, 'Downloading', filename, totalBytesDownloaded);
                 const bytes = await fetchBinary(imageData.url);
                 zip.add(filename, bytes);
                 successful++;
-                console.log(`[fcdl] ✓ Added to ZIP: ${filename}`);
+                totalBytesDownloaded += bytes.length;
+                console.log(`[fcdl] ✓ Added to ZIP: ${filename} (${formatBytes(bytes.length)})`);
                 return { success: true, filename };
             } catch (error) {
                 console.error(`[fcdl] ✗ Failed to download ${imageData.url}:`, error);
-                // A ZIP-size problem is fatal for the whole archive; anything else is per-file.
                 if (/ZIP too large/.test(error.message)) { zipError = error; }
                 return { success: false, filename, error: error.message };
             } finally {
                 completed++;
-                updateProgress(completed, imageLinks.length, 'Downloading', filename);
+                updateProgress(completed, imageLinks.length, 'Downloading', filename, totalBytesDownloaded);
             }
         };
-
         const processDownloads = async () => {
             const promises = [];
             for (const imageData of imageLinks) {
@@ -796,7 +803,7 @@
                 return;
             }
 
-            updateProgress(imageLinks.length, imageLinks.length, 'Creating ZIP file', '');
+            updateProgress(imageLinks.length, imageLinks.length, 'Creating ZIP file', '', totalBytesDownloaded);
 
             const zipBlob = zip.finish();
 
@@ -805,7 +812,8 @@
             const pageTitle = document.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
             const zipFilename = `${pageTitle || 'images'}_${timestamp}.zip`;
 
-            updateProgress(imageLinks.length, imageLinks.length, 'Downloading ZIP', zipFilename);
+            updateProgress(imageLinks.length, imageLinks.length, 'Downloading ZIP', zipFilename, totalBytesDownloaded);
+
 
             triggerZipDownload(zipBlob, zipFilename);
 
