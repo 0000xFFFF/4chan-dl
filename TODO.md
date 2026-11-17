@@ -1,2 +1,3 @@
+- need to add bytes written limit
 - rewrite project in rust ditch python
 - make cargo build release
