@@ -6,7 +6,11 @@ If the thread has multiple files with the same posted filename the files will be
 
 ## UserScript ([Violent Monkey](https://violentmonkey.github.io/get-it/), ...)
 
-### Adds buttons that lets you download all the content from a thread in a zip file.
+### Adds buttons that lets you download all the content from a thread.
+
+Files are downloaded as a ZIP archive by default,
+unless limits are exceeded (4 GB total size or 65,535 files).
+In that case, files are downloaded individually.
 
 <img src="preview/preview.png">
 
