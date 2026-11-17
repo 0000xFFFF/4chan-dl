@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         4chan-dl
 // @namespace    0000xFFFF
-// @version      3.0.2
+// @version      3.1.0
 // @description  Download media files from 4chan.org with their posted filenames.
 // @author       0000xFFFF
 // @license      MIT
@@ -155,6 +155,119 @@
         saveMode: loadSetting("FCDL_SAVE_MODE", 0), // 1 == useOriginalNames, 2 == usePostIds, 3 == combineNames
         maxConcurrentDownloads: loadSetting("FCDL_MAX_CONCURRENT_DOWNLOADS", 1)
     };
+
+    // ------------------------------------------------------------------
+    // Minimal STORE-only ZIP writer (replaces JSZip).
+    //
+    // JSZip schedules its work through setImmediate/postMessage tricks that
+    // can silently never fire inside MV3 userscript sandboxes, so
+    // generateAsync() just hangs. This writer is fully synchronous, needs no
+    // dependency, and moves each file into a Blob as soon as it is added so
+    // the browser can keep the data outside the JS heap.
+    // Limits: no ZIP64 (max 4 GB total / 65535 files) -- we throw if exceeded.
+    // ------------------------------------------------------------------
+    const CRC_TABLE = (function() {
+        const t = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+            let c = n;
+            for (let k = 0; k < 8; k++) {
+                c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+            }
+            t[n] = c >>> 0;
+        }
+        return t;
+    })();
+
+    function crc32(bytes) {
+        let c = 0xFFFFFFFF;
+        for (let i = 0; i < bytes.length; i++) {
+            c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+        }
+        return (c ^ 0xFFFFFFFF) >>> 0;
+    }
+
+    class StoreZip {
+        constructor() {
+            this.parts = [];
+            this.entries = [];
+            this.offset = 0;
+            this.encoder = new TextEncoder();
+        }
+
+        add(name, data) {
+            const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+            const nameBytes = this.encoder.encode(name);
+            const size = bytes.length;
+            const crc = crc32(bytes);
+
+            if (this.entries.length >= 0xFFFF) { throw new Error('ZIP too large (too many files)'); }
+            if (this.offset + 30 + nameBytes.length + size > 0xFFFFFFFF) { throw new Error('ZIP too large (over 4 GB)'); }
+
+            const d = new Date();
+            const dosTime = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
+            const dosDate = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+
+            const h = new DataView(new ArrayBuffer(30));
+            h.setUint32(0, 0x04034b50, true);   // local file header signature
+            h.setUint16(4, 20, true);           // version needed
+            h.setUint16(6, 0x0800, true);       // flags: UTF-8 names
+            h.setUint16(8, 0, true);            // method: STORE
+            h.setUint16(10, dosTime, true);
+            h.setUint16(12, dosDate, true);
+            h.setUint32(14, crc, true);
+            h.setUint32(18, size, true);        // compressed size
+            h.setUint32(22, size, true);        // uncompressed size
+            h.setUint16(26, nameBytes.length, true);
+            h.setUint16(28, 0, true);           // extra length
+
+            // Wrap in a Blob right away so the browser can manage the memory.
+            this.parts.push(new Blob([h.buffer, nameBytes, bytes]));
+
+            this.entries.push({ nameBytes, crc, size, dosTime, dosDate, offset: this.offset });
+            this.offset += 30 + nameBytes.length + size;
+        }
+
+        finish() {
+            const cdStart = this.offset;
+            let cdSize = 0;
+            const cdParts = [];
+
+            for (const e of this.entries) {
+                const c = new DataView(new ArrayBuffer(46));
+                c.setUint32(0, 0x02014b50, true);  // central directory signature
+                c.setUint16(4, 20, true);          // version made by
+                c.setUint16(6, 20, true);          // version needed
+                c.setUint16(8, 0x0800, true);      // flags: UTF-8 names
+                c.setUint16(10, 0, true);          // method: STORE
+                c.setUint16(12, e.dosTime, true);
+                c.setUint16(14, e.dosDate, true);
+                c.setUint32(16, e.crc, true);
+                c.setUint32(20, e.size, true);
+                c.setUint32(24, e.size, true);
+                c.setUint16(28, e.nameBytes.length, true);
+                c.setUint16(30, 0, true);          // extra length
+                c.setUint16(32, 0, true);          // comment length
+                c.setUint16(34, 0, true);          // disk number
+                c.setUint16(36, 0, true);          // internal attrs
+                c.setUint32(38, 0, true);          // external attrs
+                c.setUint32(42, e.offset, true);   // local header offset
+                cdParts.push(c.buffer, e.nameBytes);
+                cdSize += 46 + e.nameBytes.length;
+            }
+
+            const end = new DataView(new ArrayBuffer(22));
+            end.setUint32(0, 0x06054b50, true);    // end of central directory
+            end.setUint16(4, 0, true);
+            end.setUint16(6, 0, true);
+            end.setUint16(8, this.entries.length, true);
+            end.setUint16(10, this.entries.length, true);
+            end.setUint32(12, cdSize, true);
+            end.setUint32(16, cdStart, true);
+            end.setUint16(20, 0, true);
+
+            return new Blob([...this.parts, ...cdParts, end.buffer], { type: 'application/zip' });
+        }
+    }
 
     function createDownloadButtons() {
         const postContainers = document.querySelectorAll(".postContainer");
@@ -463,6 +576,17 @@
         }
     }
 
+    // Returns a Uint8Array. Userscript managers may hand back an ArrayBuffer,
+    // a Blob or a typed array depending on the browser/manager version, and
+    // instanceof checks can fail across sandbox realms, so check by tag.
+    async function toUint8Array(r) {
+        const tag = Object.prototype.toString.call(r);
+        if (tag === '[object ArrayBuffer]') { return new Uint8Array(r); }
+        if (tag === '[object Blob]' || tag === '[object File]') { return new Uint8Array(await r.arrayBuffer()); }
+        if (ArrayBuffer.isView(r)) { return new Uint8Array(r.buffer, r.byteOffset, r.byteLength); }
+        throw new Error('Empty or unsupported response body');
+    }
+
     async function fetchBinary(url) {
         if (typeof GM_xmlhttpRequest === 'function') {
             return await new Promise((resolve, reject) => {
@@ -470,10 +594,10 @@
                     method: 'GET',
                     url: url,
                     responseType: 'arraybuffer',
-                    timeout: 30000,
+                    timeout: 60000,
                     onload: (response) => {
                         if (response.status >= 200 && response.status < 300) {
-                            resolve(response.response);
+                            toUint8Array(response.response).then(resolve, reject);
                             return;
                         }
                         reject(new Error(`HTTP ${response.status} - ${response.statusText}`));
@@ -490,26 +614,14 @@
             throw new Error(`HTTP ${response.status} - ${response.statusText}`);
         }
 
-        return await response.arrayBuffer();
+        return new Uint8Array(await response.arrayBuffer());
     }
 
+    // Plain <a download> on a blob: URL. GM_download hands the URL to the
+    // extension's service worker in MV3, which can't reliably read blob URLs
+    // created in the page, so don't use it for the ZIP.
     function triggerZipDownload(zipBlob, zipFilename) {
         const zipUrl = URL.createObjectURL(zipBlob);
-
-        if (typeof GM_download === 'function') {
-            GM_download({
-                url: zipUrl,
-                name: zipFilename,
-                saveAs: true,
-                onerror: () => {
-                    console.error('[fcdl] GM_download failed for ZIP file');
-                },
-                onload: () => {
-                    setTimeout(() => URL.revokeObjectURL(zipUrl), 5000);
-                }
-            });
-            return;
-        }
 
         const downloadLink = document.createElement('a');
         downloadLink.href = zipUrl;
@@ -519,7 +631,9 @@
         document.body.appendChild(downloadLink);
         downloadLink.click();
         document.body.removeChild(downloadLink);
-        setTimeout(() => URL.revokeObjectURL(zipUrl), 5000);
+
+        // Keep the URL alive long enough for big files to be written out.
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 60000);
     }
 
     async function downloadFilesIndividually(imageLinks) {
@@ -585,29 +699,11 @@
             return;
         }
 
-        // Extract thread ID from URL
-        const threadId = window.location.pathname.split('/').pop() || 'thread';
-        const suggestedPath = `Downloads_${threadId}`;
-
-        // Combined dialog: Instructions + confirmation
-        const userConfirmed = confirm(
-            `ZIPPING CURRENTLY BROKEN, Please set the download directory manually (e.g. ${suggestedPath})\n` +
-            `IMPORTANT: Uncheck "Ask where to save file" in your download settings, so you don't get spammed with dialog boxes.\n` +
-            `Firefox: about:preferences#downloads\n` +
-            `Brave: brave://settings/downloads\n` +
-            `Ready to start downloading (${imageLinks.length} files)?`,
-            ""
-        );
-
+        const userConfirmed = confirm(`Ready to download ${imageLinks.length} files as a ZIP?`);
         if (!userConfirmed) {
             return;
         }
 
-        // ZIP creation disabled - using individual downloads instead
-        await downloadFilesIndividually(imageLinks);
-        return;
-
-        /* ZIP CREATION CODE DISABLED - NOT WORKING
         const container = document.getElementById("4chan_dl_cont");
         const progressIndicator = createProgressIndicator();
         container.appendChild(progressIndicator);
@@ -615,10 +711,11 @@
 
         console.log(`[fcdl] Found ${imageLinks.length} images to download`);
 
-        const zip = new JSZip();
+        const zip = new StoreZip();
         const downloadedFilenames = new Set();
         let completed = 0;
         let successful = 0;
+        let zipError = null;
 
         updateProgress(0, imageLinks.length, 'Initializing', '');
 
@@ -643,13 +740,15 @@
 
             try {
                 updateProgress(completed + 1, imageLinks.length, 'Downloading', filename);
-                const arrayBuffer = await fetchBinary(imageData.url);
-                zip.file(filename, arrayBuffer);
+                const bytes = await fetchBinary(imageData.url);
+                zip.add(filename, bytes);
                 successful++;
                 console.log(`[fcdl] ✓ Added to ZIP: ${filename}`);
                 return { success: true, filename };
             } catch (error) {
                 console.error(`[fcdl] ✗ Failed to download ${imageData.url}:`, error);
+                // A ZIP-size problem is fatal for the whole archive; anything else is per-file.
+                if (/ZIP too large/.test(error.message)) { zipError = error; }
                 return { success: false, filename, error: error.message };
             } finally {
                 completed++;
@@ -660,6 +759,7 @@
         const processDownloads = async () => {
             const promises = [];
             for (const imageData of imageLinks) {
+                if (zipError) { break; }
                 promises.push(downloadImage(imageData));
                 if (promises.length >= config.maxConcurrentDownloads) {
                     await Promise.all(promises.splice(0, config.maxConcurrentDownloads));
@@ -670,46 +770,41 @@
             }
         };
 
+        const fallbackToIndividual = async (reason) => {
+            console.warn(`[fcdl] ${reason}; falling back to individual downloads.`);
+            updateProgress(imageLinks.length, imageLinks.length, 'Fallback download', '');
+            await downloadFilesIndividually(imageLinks);
+            progressIndicator.remove();
+            const statusDiv = document.createElement("div");
+            statusDiv.className = "fcdl_progress_status";
+            statusDiv.textContent = `${imageLinks.length} files (individual downloads)`;
+            container.appendChild(statusDiv);
+        };
+
         try {
             await processDownloads();
-            completed = imageLinks.length;
-            updateProgress(completed, imageLinks.length, 'Creating ZIP file', '');
 
-            let zipBlob;
-            try {
-                zipBlob = await Promise.race([
-                    zip.generateAsync({
-                        type: "blob",
-                        compression: "STORE"
-                    }),
-                    new Promise((_, reject) => {
-                        setTimeout(() => {
-                            reject(new Error('ZIP creation timed out after 25 seconds; falling back to individual downloads.'));
-                        }, 25000);
-                    })
-                ]);
-            } catch (zipError) {
-                console.warn('[fcdl] ZIP creation stalled, falling back to individual downloads:', zipError);
-                updateProgress(completed, imageLinks.length, 'Fallback download', '');
-                await downloadFilesIndividually(imageLinks);
-
-                if (progressIndicator) {
-                    progressIndicator.remove();
-                }
-
-                const statusDiv = document.createElement("div");
-                statusDiv.className = "fcdl_progress_status";
-                statusDiv.innerHTML = `${successful} / ${imageLinks.length} (individual files)`;
-                container.appendChild(statusDiv);
+            if (zipError) {
+                await fallbackToIndividual(zipError.message);
                 return;
             }
+
+            if (successful === 0) {
+                progressIndicator.remove();
+                alert('❌ No files could be downloaded. Check the console for details.');
+                return;
+            }
+
+            updateProgress(imageLinks.length, imageLinks.length, 'Creating ZIP file', '');
+
+            const zipBlob = zip.finish();
 
             const now = new Date();
             const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
             const pageTitle = document.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 50);
             const zipFilename = `${pageTitle || 'images'}_${timestamp}.zip`;
 
-            updateProgress(completed, imageLinks.length, 'Downloading ZIP', zipFilename);
+            updateProgress(imageLinks.length, imageLinks.length, 'Downloading ZIP', zipFilename);
 
             triggerZipDownload(zipBlob, zipFilename);
 
@@ -722,15 +817,13 @@
                     `❌ Failed: ${imageLinks.length - successful}\n` +
                     `💾 ZIP size: ${sizeInMB} MB`;
 
-                if (progressIndicator) {
-                    progressIndicator.remove();
-                }
+                progressIndicator.remove();
 
                 document.querySelectorAll(".fcdl_progress_status").forEach((item, index) => { item.remove(); });
 
                 const statusDiv = document.createElement("div");
                 statusDiv.className = "fcdl_progress_status";
-                statusDiv.innerHTML = `${successful} / ${imageLinks.length} (${sizeInMB} MB)`;
+                statusDiv.textContent = `${successful} / ${imageLinks.length} (${sizeInMB} MB)`;
                 container.appendChild(statusDiv);
 
                 console.log(`[fcdl] ${message}`);
@@ -738,10 +831,9 @@
 
         } catch (error) {
             console.error('[fcdl] Error creating ZIP:', error);
-            document.body.removeChild(progressIndicator);
+            progressIndicator.remove();
             alert(`❌ Error creating ZIP file:\n${error.message}`);
         }
-        */
     }
 
     async function init() {
@@ -786,3 +878,4 @@
     init();
 
 })();
+
