@@ -27,6 +27,8 @@ In that case, files are downloaded individually.
 
 ## Python version
 
+<details><summary>Here</summary>
+
 [![Python 3.12.5](https://img.shields.io/badge/Python-3.12.5-yellow.svg)](http://www.python.org/download/)
 
 ### Setup virtual environment & install - before running anything
@@ -73,6 +75,10 @@ options:
   -v, --verbose         be more verbose
   -g, --goodargs        -crvt 5
 ```
+
+</details>
+
+---
 
 # Diclaimer
 * This project is for educational and personal use only.
