@@ -32,7 +32,7 @@ In that case, files are downloaded individually.
 ### Setup virtual environment & install - before running anything
 ```sh
 ./setup-venv.sh
-./install.sh
+./link.sh
 ```
 
 ### Running
